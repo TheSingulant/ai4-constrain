@@ -1,8 +1,9 @@
 """Internal backends and reserved hooks.
 
 The public ``ai4.constrain`` package does not re-export experiment test
-doubles, mutable evaluator registries, or reserved session/HTTP names.
-Those stay here so later PRs can fill them without rewriting ``run``.
+doubles or mutable evaluator registries. Session persistence is
+constructed here so ``run`` / ``evaluate`` stay the frozen condition-D
+product API.
 """
 
 from __future__ import annotations
@@ -41,20 +42,13 @@ class EvaluatorBackend(Protocol):
 
 
 class SessionStore(Protocol):
-    """Reserved. Session persistence is a later PR."""
+    """Persist ConstrainedSession snapshots. Implementations fail closed."""
 
-    def load(self, session_id: str) -> None:
-        """Load a prior session. Not implemented."""
+    def load(self, session_id: str) -> object | None:
+        """Return a prior SessionState, or None if the id is new."""
 
-    def save(self, session_id: str, report: object) -> None:
-        """Persist a report. Not implemented."""
-
-
-class HttpService(Protocol):
-    """Reserved. HTTP serving is a later PR."""
-
-    def serve(self, host: str = "127.0.0.1", port: int = 0) -> None:
-        """Start an HTTP server. Not implemented."""
+    def save(self, session_id: str, state: object) -> None:
+        """Persist a SessionState snapshot."""
 
 
 def assert_complete_evaluation(evaluation: Evaluation | None) -> Evaluation:
@@ -179,16 +173,20 @@ def resolve_provider(provider: str | ProviderBackend | None = "mock") -> Provide
     return provider
 
 
-def session_store(*_args, **_kwargs) -> SessionStore:
-    raise ConstraintExecutionError(
-        "Session persistence is not implemented. Reserved for a later PR."
-    )
+def session_store(path: str | None = None, *args, **kwargs) -> SessionStore:
+    """Memory store by default; directory path selects FileSessionStore."""
+    from ai4.constrain.session import FileSessionStore, MemorySessionStore
 
-
-def http_service(*_args, **_kwargs) -> HttpService:
-    raise ConstraintExecutionError(
-        "HTTP service is not implemented. Reserved for a later PR."
-    )
+    if args:
+        raise ConstraintExecutionError("session_store() takes an optional path only")
+    extra = dict(kwargs)
+    if extra:
+        raise ConstraintExecutionError(
+            f"Unknown session_store() argument(s): {sorted(extra)}"
+        )
+    if path is None:
+        return MemorySessionStore()
+    return FileSessionStore(path)
 
 
 __all__ = [
@@ -199,7 +197,6 @@ __all__ = [
     "FROZEN_RUBRIC_SET",
     "FrozenV01RegexEvaluator",
     "GuardedEvaluator",
-    "HttpService",
     "KNOWN_EVALUATOR_IDS",
     "KNOWN_PROVIDER_IDS",
     "PREFLIGHT_PROBE",
@@ -207,7 +204,6 @@ __all__ = [
     "REQUIRED_SHARD_IDS",
     "SessionStore",
     "assert_complete_evaluation",
-    "http_service",
     "preflight_evaluator",
     "resolve_evaluator",
     "resolve_provider",

@@ -10,8 +10,9 @@ library exposes. It is **not** a claim that D won Stage 2D.
   **`null_retained_D_adds_cost`**.
 - Do not retune shards, thresholds, or arbitration from that result.
 
-This wrapper is not a new evaluator, not a session/HTTP service, and not
-a change to Stage 2 evidence.
+This wrapper is not a new evaluator and not a change to Stage 2 evidence.
+Multi-turn state, JSONL traces, and shard cards are documented in
+`docs/constrain-session.md`.
 
 ## Call
 
@@ -125,10 +126,18 @@ This CLI is separate from `python -m src.main`.
 `RuntimeConfig.evaluator_id` and `provider_id` are resolved. Unknown ids
 fail closed. There is no decorative unused config.
 
-## Extension points (not implemented here)
+## Extension points
 
-Internal hooks live in `ai4.constrain.ext` and are not a stable product
-surface. Session/HTTP raise. Only evaluator `v0.1-regex` is shipped.
+Internal constructors live in `ai4.constrain.ext` and are not a substitute
+for `run` / `evaluate`.
+
+- `session_store()` — in-memory by default; a directory path selects JSON
+  snapshots used by `ConstrainedSession`. Constructor/runtime config is
+  authority on restore; persisted `redact` / `include_history` are
+  validation metadata, not governing settings.
+
+Only evaluator `v0.1-regex` is shipped. Unknown evaluator ids still fail
+closed.
 
 ## Fail-closed rules
 

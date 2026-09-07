@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from ai4.constrain import ConstraintExecutionError, evaluate, run
-from ai4.constrain.ext import FrozenV01RegexEvaluator, http_service, session_store
+from ai4.constrain.ext import FrozenV01RegexEvaluator, session_store
 from src.shards.models import Evaluation
 
 CLEAN = "Here is a brief, checkable answer about options."
@@ -63,11 +63,9 @@ def test_evaluator_exception_fails_closed():
         evaluate(CLEAN, evaluator=Boom())
 
 
-def test_session_and_http_hooks_are_reserved():
-    with pytest.raises(ConstraintExecutionError, match="later PR"):
-        session_store("unused")
-    with pytest.raises(ConstraintExecutionError, match="later PR"):
-        http_service()
+def test_session_store_hook_is_wired():
+    store = session_store()
+    assert store.load("no-such-session") is None
 
 
 def test_run_rejects_non_string_prompt():

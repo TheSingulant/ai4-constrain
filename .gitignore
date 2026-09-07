@@ -33,3 +33,4 @@ htmlcov/
 # Experiment outputs
 outputs/
 *.log
+.ai4-sessions/

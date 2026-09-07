@@ -1,6 +1,6 @@
 # ai4-constrain
 
-Public product runtime for **`ai4.constrain`** (v0.1.0): a constrained-generation library that productizes the frozen **condition-D** architecture (five shard rubrics, per-shard scores, arbitration, at most two revision rounds).
+Public product runtime for **`ai4.constrain`** (**v0.2.0**): a constrained-generation library that productizes the frozen **condition-D** architecture (five shard rubrics, per-shard scores, arbitration, at most two revision rounds), plus **`ConstrainedSession`** for persistent constrained state across turns.
 
 This repository is **not** the live Telegram bot (`@AI4DemoBot`) and is **not** a Vultr or other host deploy tree. It does not ship production credentials, bot tokens, or deployment wiring.
 
@@ -8,7 +8,20 @@ This repository is **not** the live Telegram bot (`@AI4DemoBot`) and is **not** 
 
 **Stage 2D did not establish D as superior to C.** Productizing condition-D is an architectural/research choice, not an experimental win. The frozen evidence classification remains **`null_retained_D_adds_cost`** (D adds cost without retained superiority over C). Sealed Stage 2D fixtures, gold notes, unblind keys, and held-out packs remain private and are **not** included in this export.
 
-See [`docs/constrain-runtime.md`](docs/constrain-runtime.md).
+## What is new in v0.2.0
+
+- **`ConstrainedSession`**: multi-turn wrapper around frozen `run` / `evaluate`
+- Local persistence: in-memory store and JSON `FileSessionStore`
+- Trusted-output semantics: only accepted (or safe-refusal) terminal text enters trusted assistant history
+- Snapshot / restore with schema + policy/runtime identity validation (fail-closed)
+- History composition (`include_history`, default **off**) is **untrusted context**, not configuration
+- Model / session content **cannot** rewrite frozen constraint policy (shards, thresholds, arbitration)
+- Session CLI: `ai4-constrain session …`
+- Optional local JSONL diagnostics and shard-card explainability (derived presentation only)
+
+**Not included:** HTTP / SSE / FastAPI serving (out of scope for this public milestone).
+
+See [`docs/constrain-session.md`](docs/constrain-session.md) and [`docs/constrain-runtime.md`](docs/constrain-runtime.md).
 
 ## Quickstart
 
@@ -17,45 +30,36 @@ python3 -m pip install -e ".[dev]"
 ```
 
 ```python
-from ai4.constrain import run, evaluate
+from ai4.constrain import ConstrainedSession, run, evaluate
+
+session = ConstrainedSession()  # mock provider, redacted, in-memory
+turn = session.complete("Please give a brief, checkable outline of options and limits.")
+print(turn.report.decision, session.last_output)
 
 report = run("Please give a brief, checkable outline of options and limits.")
 print(report.decision, report.final_output)
-
-scored = evaluate("Here is a brief, checkable answer about options.")
-print(scored.decision)
 ```
 
-CLI (entry point `ai4-constrain`, or module form):
+CLI:
 
 ```bash
 ai4-constrain --help
-python -m ai4.constrain --help
-python -m ai4.constrain run --prompt "Please give a brief, checkable outline of options and limits."
-python -m ai4.constrain evaluate --text "Here is a brief, checkable answer about options."
-python examples/constrain/hello.py
+ai4-constrain session complete --prompt "Please give a brief, checkable outline of options and limits."
+ai4-constrain session demo --explain
+python examples/constrain/session_turns.py
 ```
 
 Default provider is the offline mock. No API key is required for the quickstart or pytest.
 
-CLI exits: 0 accept, 1 config/runtime failure, 2 revise, 3 refuse, 4 timeout/execution. Reports redact common personal-data patterns by default.
+## Persistence / privacy notes
 
-## What ships in v0.1
-
-- Product package: `ai4.constrain` (`run`, `evaluate`, `DecisionReport`, CLI)
-- Packaged rubrics: `ai4/data/rubrics/v0.1/` (also mirrored under `rubrics/v0.1/`)
-- Offline experiment harness under `src/` (conditions A/B/C/D) for local pilot work
-- Dev fixtures only: `fixtures/dev_set.jsonl`, `fixtures/pilot_prompts.jsonl`
-
-Out of scope for this public tree: Docker/Telegram production wiring, sealed held-out fixtures, Stage 2D authoring scripts, on-chain listeners, governance claims.
+`FileSessionStore` writes JSON snapshots under a local directory (prompts, reports, derived trusted output, policy identity metadata). Default redaction substitutes common personal-data patterns; it does **not** mean “no sensitive text is ever written.” Treat the store directory as trusted local storage, not a policy oracle. Tampering with snapshot JSON cannot weaken constructor `redact` / `include_history` or change frozen policy identity on restore.
 
 ## Tests (offline)
 
 ```bash
 python3 -m pytest
 ```
-
-Pytest uses the mock provider and must pass without network.
 
 ## Live models (optional)
 

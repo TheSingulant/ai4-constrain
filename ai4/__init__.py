@@ -9,16 +9,21 @@ from __future__ import annotations
 
 from ai4.constrain.api import evaluate, run
 from ai4.constrain.errors import ConstraintExecutionError
+from ai4.constrain.explain import format_explain, shard_card
 from ai4.constrain.report import DecisionReport
 from ai4.constrain.runtime import EVIDENCE_CLASS
+from ai4.constrain.session import ConstrainedSession
 
 __version__ = "0.1.0"
 
 __all__ = [
+    "ConstrainedSession",
     "ConstraintExecutionError",
     "DecisionReport",
     "EVIDENCE_CLASS",
     "evaluate",
+    "format_explain",
     "run",
+    "shard_card",
     "__version__",
 ]

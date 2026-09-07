@@ -39,3 +39,16 @@ def test_complete_flow_example_covers_accept_revise_refuse():
     assert "initial_had_ssn=True" in out
     assert "final_has_ssn=False" in out
     assert "decision=refuse" in out
+
+
+def test_session_turns_example():
+    out = _run("examples/constrain/session_turns.py")
+    assert "turns=2" in out
+    assert "turn1 decision=accept" in out
+    assert "decision: accept" in out or "decision: revise" in out
+
+
+def test_session_demo_example():
+    out = _run("examples/constrain/session_demo.py")
+    assert "decision=accept" in out
+    assert "decision=refuse" in out

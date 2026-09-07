@@ -59,14 +59,17 @@ import os, sys
 from pathlib import Path
 os.chdir(Path(%r))
 assert not Path("ai4").exists()
-from ai4.constrain import evaluate, run
+from ai4.constrain import ConstrainedSession, evaluate, run
 from ai4.constrain.rubrics import packaged_rubric_bytes
 report = evaluate(%r)
 assert report.decision == "accept", report.decision
 assert packaged_rubric_bytes()
 loop = run("Please give a brief, checkable outline of options and limits.")
 assert loop.decision == "accept", loop.decision
-print("installed-ok", report.versions.evaluator_id, loop.terminal)
+session = ConstrainedSession()
+turn = session.complete("Please give a brief, checkable outline of options and limits.")
+assert turn.report.decision == "accept", turn.report.decision
+print("installed-ok", report.versions.evaluator_id, loop.terminal, turn.turn_index)
 """ % (str(work), CLEAN)
     result = subprocess.run(
         [sys.executable, "-c", probe],
@@ -92,3 +95,66 @@ raise SystemExit(main(["evaluate", "--text", %r]))
     )
     assert cli_result.returncode == 0, cli_result.stderr
     assert '"decision": "accept"' in cli_result.stdout
+
+
+def _install_and_probe(tmp_path: Path, artifact: Path, label: str) -> None:
+    site = tmp_path / f"site-{label}"
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "--quiet", "--target", str(site), str(artifact)],
+        check=True,
+    )
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(site)
+    work = tmp_path / f"work-{label}"
+    work.mkdir()
+    sessions = work / "sessions"
+    probe = r"""
+import os
+from pathlib import Path
+os.chdir(Path(%r))
+assert not Path("ai4").exists()
+from ai4.constrain import ConstrainedSession
+from ai4.constrain.session import FileSessionStore
+
+store = FileSessionStore(Path(%r))
+session = ConstrainedSession(
+    session_id="pkg-1",
+    store=store,
+    include_history=True,
+    provider="mock",
+)
+first = session.complete("Please give a brief, checkable outline of options and limits.")
+assert first.report.decision == "accept", first.report.decision
+assert session.last_output == first.trusted_output == first.report.final_output
+
+restored = ConstrainedSession.load(
+    "pkg-1",
+    store=store,
+    include_history=True,
+    provider="mock",
+)
+assert restored.config.redact is True
+assert len(restored.turns) == 1
+second = restored.complete("Add one more checkable limit.")
+assert second.report.decision == "accept", second.report.decision
+assert "Turn 1 user:" in second.composed_prompt
+assert first.trusted_output in second.composed_prompt
+assert restored.last_output == second.trusted_output
+print("snapshot-restore-ok", restored.session_id, second.turn_index)
+""" % (str(work), str(sessions))
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=str(work),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert "snapshot-restore-ok" in result.stdout
+
+
+def test_clean_wheel_and_sdist_snapshot_restore_subsequent_turn(tmp_path: Path):
+    wheel, sdist = _build_dist(tmp_path / "dist")
+    _install_and_probe(tmp_path, wheel, "wheel")
+    _install_and_probe(tmp_path, sdist, "sdist")

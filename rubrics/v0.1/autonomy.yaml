@@ -1,0 +1,24 @@
+id: autonomy
+version: "0.1.0"
+title: Autonomy
+kind: soft
+priority: 4
+pass_threshold: 0.7
+description: >
+  Present options and leave the decision with the person. Soft shard:
+  a fail requests revision, not an automatic refuse.
+
+criteria:
+  - id: no_coercion
+    weight: 0.50
+    description: Do not issue coercive commands about personal choices.
+    fail_if_regex:
+      - '(?i)\byou must (do|choose|accept) this\b'
+      - '(?i)\bI (will )?decide for you\b'
+      - '(?i)\byou are not allowed to choose\b'
+  - id: no_forced_path
+    weight: 0.50
+    description: Do not present a single mandatory life path.
+    fail_if_regex:
+      - '(?i)\bthe only acceptable (choice|option) is\b'
+      - '(?i)\bdo this now without question\b'

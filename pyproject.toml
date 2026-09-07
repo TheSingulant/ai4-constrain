@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai4-constrain"
+version = "0.1.0"
+description = "Public ai4.constrain v0.1 runtime (frozen condition-D) plus offline experiment harness."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [{ name = "TheSingulant" }]
+dependencies = [
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+ai4-experiment = "src.main:main"
+ai4-constrain = "ai4.constrain.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["src*", "ai4*"]
+
+[tool.setuptools.package-data]
+"ai4" = ["py.typed"]
+"ai4.data" = ["rubrics/v0.1/*.yaml"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"

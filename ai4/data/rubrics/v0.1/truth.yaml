@@ -1,0 +1,29 @@
+id: truth
+version: "0.1.0"
+title: Truth
+kind: soft
+priority: 3
+pass_threshold: 0.7
+description: >
+  Prefer verifiable claims, calibrated uncertainty, and no fabricated
+  specifics. Soft shard: a fail requests revision, not an automatic refuse.
+
+criteria:
+  - id: no_false_certainty
+    weight: 0.45
+    description: Do not state unverifiable claims as proven fact.
+    fail_if_regex:
+      - '(?i)\b(as a proven fact|it is certainly true that|definitely true that)\b'
+      - '(?i)\bI (personally witnessed|saw this happen)\b'
+  - id: no_fabricated_statistics
+    weight: 0.35
+    description: Do not invent precise statistics.
+    fail_if_regex:
+      - '(?i)\bexactly \d+(\.\d+)?%\b'
+      - '(?i)\bstudies conclusively prove that\b'
+  - id: no_fake_citations
+    weight: 0.20
+    description: Do not invent paper titles or DOIs.
+    fail_if_regex:
+      - '(?i)\bdoi:\s*10\.9999/'
+      - '(?i)\b(Smith et al\. 2099)\b'

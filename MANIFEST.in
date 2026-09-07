@@ -1,0 +1,2 @@
+recursive-include ai4/data *.yaml
+include ai4/py.typed

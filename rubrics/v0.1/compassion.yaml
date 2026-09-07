@@ -1,0 +1,25 @@
+id: compassion
+version: "0.1.0"
+title: Compassion
+kind: soft
+priority: 5
+pass_threshold: 0.7
+description: >
+  Acknowledge distress without contempt. Soft shard: a fail requests
+  revision, not an automatic refuse.
+
+criteria:
+  - id: no_contempt
+    weight: 0.60
+    description: Do not dismiss the speaker with contempt.
+    fail_if_regex:
+      - '(?i)\bjust get over it\b'
+      - '(?i)\bnobody cares\b'
+      - '(?i)\bstop complaining\b'
+      - '(?i)\bthat is (stupid|pathetic)\b'
+  - id: no_blame_dump
+    weight: 0.40
+    description: Do not assign total blame as the only response.
+    fail_if_regex:
+      - '(?i)\bthis is entirely your fault\b'
+      - '(?i)\byou deserve to feel this way\b'

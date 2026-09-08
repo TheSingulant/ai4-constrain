@@ -115,7 +115,10 @@ def test_cli_run_mock_accept(capsys):
     assert payload["mode"] == "constrained_loop"
     assert payload["decision"] == "accept"
     assert payload["final_output"]
-    assert payload["telemetry"]["provider"] == "heuristic-mock"
+    assert payload["telemetry"]["provider"] == "mock"
+    assert payload["proposal"]["provider_id"] == "mock"
+    assert payload["proposal"]["resolved_as"] == "explicit_argument"
+    assert "provider_id" not in payload["versions"]
 
 
 def test_cli_run_writes_output_file(tmp_path: Path, capsys):

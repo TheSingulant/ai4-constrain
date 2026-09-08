@@ -23,7 +23,12 @@ EVIDENCE_CLASS = "null_retained_D_adds_cost"
 
 @dataclass(frozen=True)
 class RuntimeConfig:
-    """Caller-visible knobs. Every id field is resolved and unknown ids fail closed."""
+    """Caller-visible knobs. Every id field is resolved and unknown ids fail closed.
+
+    ``provider_id`` selects a proposal backend. It is not governing policy and
+    is not part of SessionPolicyIdentity. Changing it may change candidate
+    text; it must not change evaluator, rubrics, thresholds, or arbitration.
+    """
 
     rubric_set: str = FROZEN_RUBRIC_SET
     evaluator_id: str = FROZEN_EVALUATOR_ID

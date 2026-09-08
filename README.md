@@ -1,6 +1,6 @@
 # ai4-constrain
 
-Public product runtime for **`ai4.constrain`** (**v0.2.0**): a constrained-generation library that productizes the frozen **condition-D** architecture (five shard rubrics, per-shard scores, arbitration, at most two revision rounds), plus **`ConstrainedSession`** for persistent constrained state across turns.
+Public product runtime for **`ai4.constrain`** (**v0.3.0**): a constrained-generation library that productizes the frozen **condition-D** architecture (five shard rubrics, per-shard scores, arbitration, at most two revision rounds), plus **`ConstrainedSession`** for persistent constrained state across turns, with a **proposal-provider policy wall** so backends emit candidate text and do not govern.
 
 This repository is **not** the live Telegram bot (`@AI4DemoBot`) and is **not** a Vultr or other host deploy tree. It does not ship production credentials, bot tokens, or deployment wiring.
 
@@ -8,7 +8,19 @@ This repository is **not** the live Telegram bot (`@AI4DemoBot`) and is **not** 
 
 **Stage 2D did not establish D as superior to C.** Productizing condition-D is an architectural/research choice, not an experimental win. The frozen evidence classification remains **`null_retained_D_adds_cost`** (D adds cost without retained superiority over C). Sealed Stage 2D fixtures, gold notes, unblind keys, and held-out packs remain private and are **not** included in this export.
 
-## What is new in v0.2.0
+## What is new in v0.3.0
+
+- **Proposal-provider policy wall:** proposal backends emit candidate text; they do not set evaluator identity, rubric set, thresholds, arbitration, enforced shards, refusal semantics, or `SessionPolicyIdentity`
+- Auditable `DecisionReport.proposal` block (`provider_id`, `model`, `resolved_as`) is **not** governing policy and is **not** on `SessionPolicyIdentity` or `versions` policy stamps
+- Provider substitution (A persist → restore → B) is a control-loop audit property. **It does not demonstrate alignment persistence across models**
+- Strict empty allowlist for provider `completion.metadata`; call `kind` is determined by AI⁴'s execution path, not provider metadata
+- Governing evaluator is bound and preflighted on `run()` **before** any `complete()` / `revise()`
+- Every session `complete()` / `evaluate_text()` revalidates the evaluator object about to be used against the identity bound at construction/load
+- Same-object dual-role provider+evaluator fails closed; unknown provider/evaluator strings fail closed; `evaluate()` remains proposal-model-free
+
+**Not a claim:** changing the proposal provider or model may change candidate text and resulting decisions. Frozen Stage 2D evidence remains **`null_retained_D_adds_cost`**.
+
+## What was new in v0.2.0
 
 - **`ConstrainedSession`**: multi-turn wrapper around frozen `run` / `evaluate`
 - Local persistence: in-memory store and JSON `FileSessionStore`

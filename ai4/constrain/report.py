@@ -255,6 +255,74 @@ class Telemetry:
         )
 
 
+PROPOSAL_IDENTITY_KEYS = ("provider_id", "model", "resolved_as")
+PROPOSAL_RESOLVED_AS = (
+    "config",
+    "explicit_argument",
+    "custom_object",
+    "evaluate_only",
+    "legacy_telemetry",
+)
+
+
+@dataclass(frozen=True)
+class ProposalIdentity:
+    """Auditable proposal-backend identity. Not governing policy.
+
+    Changing provider or model may change candidate text and the resulting
+    decision. It must not change evaluator identity, rubric set, thresholds,
+    arbitration, enforced shards, refusal semantics, RuntimeConfig security
+    settings, or SessionPolicyIdentity.
+    """
+
+    provider_id: str
+    model: str = ""
+    resolved_as: str = "config"
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "provider_id": self.provider_id,
+            "model": self.model,
+            "resolved_as": self.resolved_as,
+        }
+
+    @classmethod
+    def from_telemetry(cls, telemetry: Telemetry) -> ProposalIdentity:
+        """Reconstruct audit identity from schema 0.1.0 telemetry-only reports."""
+        return cls(
+            provider_id=str(telemetry.provider or "none"),
+            model=str(telemetry.model or ""),
+            resolved_as="legacy_telemetry",
+        )
+
+    @classmethod
+    def from_dict(cls, raw: object) -> ProposalIdentity:
+        if not isinstance(raw, dict):
+            raise ConstraintExecutionError("proposal identity must be a JSON object")
+        extra = sorted(str(key) for key in raw if key not in PROPOSAL_IDENTITY_KEYS)
+        if extra:
+            raise ConstraintExecutionError(
+                f"Unknown proposal identity field(s) {extra}; refusing policy smuggling"
+            )
+        missing = [key for key in PROPOSAL_IDENTITY_KEYS if key not in raw]
+        if missing:
+            raise ConstraintExecutionError(f"proposal identity missing keys: {missing}")
+        provider_id = str(raw["provider_id"] or "").strip()
+        if not provider_id:
+            raise ConstraintExecutionError("proposal.provider_id must be non-empty")
+        resolved_as = str(raw["resolved_as"] or "").strip()
+        if resolved_as not in PROPOSAL_RESOLVED_AS:
+            raise ConstraintExecutionError(
+                f"Unknown proposal.resolved_as {resolved_as!r}. "
+                f"Allowed: {PROPOSAL_RESOLVED_AS}"
+            )
+        return cls(
+            provider_id=provider_id,
+            model=str(raw.get("model") or ""),
+            resolved_as=resolved_as,
+        )
+
+
 @dataclass(frozen=True)
 class VersionInfo:
     runtime_version: str
@@ -287,6 +355,12 @@ class VersionInfo:
         versions = raw.get("rubric_versions") or {}
         if not isinstance(versions, dict):
             raise ConstraintExecutionError("versions.rubric_versions must be an object")
+        smuggled = [key for key in ("provider", "provider_id", "model", "resolved_as") if key in raw]
+        if smuggled:
+            raise ConstraintExecutionError(
+                f"versions must not include proposal identity field(s) {smuggled}; "
+                "provider/model are not governing policy"
+            )
         return cls(
             runtime_version=str(raw.get("runtime_version") or RUNTIME_VERSION),
             report_schema_version=str(raw.get("report_schema_version") or REPORT_SCHEMA_VERSION),
@@ -381,6 +455,13 @@ class DecisionReport:
     shard_control_scope: str = "all_required_v0.1"
     candidate_evaluated: bool = True
     redacted: bool = True
+    proposal: ProposalIdentity | None = None
+
+    def proposal_identity(self) -> ProposalIdentity:
+        """Auditable proposal identity; reconstructed from telemetry on old reports."""
+        if self.proposal is not None:
+            return self.proposal
+        return ProposalIdentity.from_telemetry(self.telemetry)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -404,6 +485,7 @@ class DecisionReport:
             "revision_trace": [item.to_dict() for item in self.revision_trace],
             "final_output": self.final_output,
             "telemetry": self.telemetry.to_dict(),
+            "proposal": self.proposal_identity().to_dict(),
             "versions": self.versions.to_dict(),
             "redacted": self.redacted,
         }
@@ -427,6 +509,7 @@ class DecisionReport:
             decision_reason=redact_text(self.decision_reason),
             revision_trace=tuple(item.redacted() for item in self.revision_trace),
             final_output=redact_text(self.final_output),
+            proposal=self.proposal,
             redacted=True,
         )
 
@@ -472,6 +555,12 @@ class DecisionReport:
         else:
             raise ConstraintExecutionError("arbitration must be an object or null")
         specified = raw.get("prompt_specified_shards", raw.get("specified_shards") or ())
+        telemetry = Telemetry.from_dict(raw["telemetry"])
+        proposal_raw = raw.get("proposal")
+        if proposal_raw is None:
+            proposal = ProposalIdentity.from_telemetry(telemetry)
+        else:
+            proposal = ProposalIdentity.from_dict(proposal_raw)
         try:
             return cls(
                 schema_version=str(raw["schema_version"]),
@@ -495,7 +584,8 @@ class DecisionReport:
                 decision_reason=str(raw.get("decision_reason") or ""),
                 revision_trace=tuple(RevisionStep.from_dict(item) for item in raw["revision_trace"]),
                 final_output=str(raw.get("final_output") or ""),
-                telemetry=Telemetry.from_dict(raw["telemetry"]),
+                telemetry=telemetry,
+                proposal=proposal,
                 versions=VersionInfo.from_dict(raw["versions"]),
                 redacted=bool(raw["redacted"]) if "redacted" in raw else True,
             )

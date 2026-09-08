@@ -26,7 +26,7 @@ from src.constraints.constraint_middleware import SAFE_REFUSAL
 from ai4.constrain.api import evaluate, run
 from ai4.constrain.errors import ConstraintExecutionError
 from ai4.constrain.explain import ShardCard, format_explain, shard_card
-from ai4.constrain.ext import EvaluatorBackend, ProviderBackend
+from ai4.constrain.ext import EvaluatorBackend, ProviderBackend, evaluator_identity, is_live_provider
 from ai4.constrain.privacy import redact_text
 from ai4.constrain.report import DecisionReport
 from ai4.constrain.runtime import (
@@ -104,7 +104,9 @@ class SessionPolicyIdentity:
     """Policy/runtime identity recorded on a snapshot for restore validation.
 
     This block is validation metadata, not a way to select shards, change
-    thresholds, disable redaction, or enable history.
+    thresholds, disable redaction, or enable history. It does not include
+    proposal provider or model identity; those are per-turn audit fields on
+    DecisionReport, not session policy.
     """
 
     runtime_version: str
@@ -343,7 +345,9 @@ class FileSessionStore:
     - ``schema_version`` and ``session_id``
     - timestamps
     - ``policy_identity`` (runtime/report/protocol/condition/evidence class,
-      rubric set, evaluator id, arbitration) as **validation metadata**
+      rubric set, evaluator id, arbitration) as **validation metadata**.
+      Proposal provider/model are not in this block; they are per-turn
+      DecisionReport audit fields.
     - ``include_history``, ``max_history_turns``, and ``redact`` as
       **validation metadata** recorded from the writing process — these are
       not restored as governing configuration
@@ -462,6 +466,9 @@ class ConstrainedSession:
         self.config = cfg
         self.provider = provider
         self.evaluator = evaluator
+        self._governing_evaluator_id = evaluator_identity(
+            evaluator if evaluator is not None else cfg.evaluator_id
+        )
         self.dry_run = bool(dry_run)
         self.persist = bool(persist)
         self._lock = threading.Lock()
@@ -589,6 +596,7 @@ class ConstrainedSession:
             raise ConstraintExecutionError("complete() requires a prompt string")
         use_history = self.include_history if include_history is None else bool(include_history)
         with self._lock:
+            self._assert_evaluator_bound(evaluator)
             composed = self._compose_prompt(prompt, include_history=use_history)
             run_kwargs = self._run_kwargs(
                 prompt_id=prompt_id or f"{self.session_id}:{len(self._turns) + 1}",
@@ -605,6 +613,7 @@ class ConstrainedSession:
                 raise
             except Exception as exc:
                 raise ConstraintExecutionError(f"Constrained session turn failed closed: {exc}") from exc
+            self._assert_report_evaluator(report)
             return self._commit_turn(
                 prompt=prompt,
                 composed_prompt=composed,
@@ -626,6 +635,7 @@ class ConstrainedSession:
         if not isinstance(text, str):
             raise ConstraintExecutionError("evaluate_text() requires a text string")
         with self._lock:
+            self._assert_evaluator_bound(evaluator)
             eval_redact = self.config.redact if redact is None else bool(redact)
             eval_backend = evaluator if evaluator is not None else self.evaluator
             try:
@@ -643,11 +653,38 @@ class ConstrainedSession:
                 raise ConstraintExecutionError(
                     f"Constrained session evaluate failed closed: {exc}"
                 ) from exc
+            self._assert_report_evaluator(report)
             return self._commit_turn(
                 prompt=prompt or text,
                 composed_prompt=prompt or text,
                 include_history=False,
                 report=report,
+            )
+
+    def _evaluator_for_turn(self, evaluator: str | EvaluatorBackend | None):
+        return evaluator if evaluator is not None else self.evaluator
+
+    def _assert_evaluator_bound(self, evaluator: str | EvaluatorBackend | None) -> None:
+        """Current evaluator identity must match the identity bound at construction.
+
+        Checked on every complete()/evaluate_text() against the object that will
+        actually be used, not only when a per-turn evaluator= argument is supplied.
+        """
+        spec = self._evaluator_for_turn(evaluator)
+        incoming = evaluator_identity(spec)
+        if incoming != self._governing_evaluator_id:
+            raise ConstraintExecutionError(
+                f"Evaluator identity {incoming!r} disagrees with session evaluator "
+                f"{self._governing_evaluator_id!r}; refusing substitution. "
+                "Evaluator interchange is not part of this runtime. No state written."
+            )
+
+    def _assert_report_evaluator(self, report: DecisionReport) -> None:
+        if report.versions.evaluator_id != self._governing_evaluator_id:
+            raise ConstraintExecutionError(
+                f"Turn evaluator {report.versions.evaluator_id!r} disagrees with "
+                f"session evaluator {self._governing_evaluator_id!r}; refusing to commit. "
+                "No state written."
             )
 
     def _run_kwargs(
@@ -784,10 +821,7 @@ def _assert_turn_policy_identity(turn: SessionTurn, expected: SessionPolicyIdent
 def _reject_live_provider(provider: object, *, context: str) -> None:
     if provider is None:
         return
-    if provider == "live":
-        raise ConstraintExecutionError(f"{context} is mock-only; refusing live provider")
-    name = str(getattr(provider, "name", "") or "")
-    if name == "live":
+    if is_live_provider(provider):
         raise ConstraintExecutionError(f"{context} is mock-only; refusing live provider")
 
 

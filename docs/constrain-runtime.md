@@ -46,6 +46,11 @@ Stable JSON document (`schema_version` `0.1.0`) with:
 - `revision_trace` captured from the live loop (not replayed)
 - `final_output`
 - telemetry and evaluator/runtime versions, including `evidence_class`
+- `proposal`: `{provider_id, model, resolved_as}` — auditable proposal-backend
+  identity, **not** governing policy. `resolved_as` is `config`,
+  `explicit_argument`, `custom_object`, `evaluate_only`, or
+  `legacy_telemetry` (schema 0.1.0 reports that only recorded provider/model
+  on telemetry). Old reports without this block remain loadable.
 
 Timeout or zero-budget before any candidate is **execution**, not a
 constraint refuse. In that case `decision` is `null` and
@@ -126,6 +131,53 @@ This CLI is separate from `python -m src.main`.
 `RuntimeConfig.evaluator_id` and `provider_id` are resolved. Unknown ids
 fail closed. There is no decorative unused config.
 
+`provider_id` selects the proposal backend only. It is recorded on
+`DecisionReport.proposal` / telemetry for audit. It is **not** part of
+`SessionPolicyIdentity` and is **not** a policy stamp on `versions`.
+
+## Proposal provider policy wall
+
+Proposal backends emit candidate text. They do not govern.
+
+Changing the proposal provider or model may change candidate text and the
+resulting accept/revise/refuse outcome. It must **not** change:
+
+- evaluator identity
+- rubric set
+- thresholds
+- arbitration
+- enforced shard set
+- shard-control semantics
+- revision bounds
+- refusal semantics
+- `RuntimeConfig` security settings
+- `SessionPolicyIdentity`
+
+**Provider interchange does not demonstrate alignment persistence across models.**
+This is a software/control invariant: the same frozen evaluator, rubrics,
+thresholds, and D controller still run. It is not evidence that two models
+are equivalently aligned.
+
+Custom proposal objects must expose a non-empty `name` or `provider_id`.
+Identities that collide with evaluator ids (for example `v0.1-regex`) or
+with policy/control field names fail closed. Provider `completion.metadata`
+is untrusted telemetry: only an explicit allowlist of fields is accepted
+(currently empty; frozen mock/live completions carry no metadata). Nested
+objects, secret-shaped keys, policy-shaped keys, and unknown keys fail
+closed. Call `kind` (`complete` / `revise` / `supplied`) is determined by
+AI⁴'s execution path, not by provider metadata. Dual-role objects that
+implement both proposal and evaluation cannot cross the call-site
+boundary: passing the same object as both `provider` and `evaluator`
+fails closed, and a provider is never used as the evaluator.
+
+Governing evaluator identity is established and preflighted on every
+`run()` path **before** any `complete()` / `revise()`. A missing, empty,
+malformed, or unknown evaluator identity fails closed without proposal
+generation, network, or spend.
+
+`evaluate()` does not call a proposal backend. Its proposal identity is
+`provider_id=none`, `resolved_as=evaluate_only`.
+
 ## Extension points
 
 Internal constructors live in `ai4.constrain.ext` and are not a substitute
@@ -144,7 +196,12 @@ closed.
 The runtime does not skip a required shard, swap in an unknown
 evaluator, or fall back to an unconstrained completion when a required
 step cannot run. Custom evaluators are preflighted and guarded so an
-incomplete score cannot enter the D loop.
+incomplete score cannot enter the D loop. Governing evaluator identity
+is validated on `run()` before any proposal `complete()` / `revise()`.
+Unknown proposal-provider strings fail closed. A session revalidates the
+evaluator object about to be used against the identity bound at
+construction/load and fails closed without writing state. Evaluator
+interchange is not part of this runtime.
 
 ## What this does not change
 

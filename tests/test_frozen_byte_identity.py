@@ -1,4 +1,9 @@
-"""Public export: lock product runtime bytes reviewed against private canonical bb19d4c."""
+"""Public export: lock scientific frozen bytes and v0.3 product files.
+
+Scientific/evaluator/D-controller bytes are unchanged from public v0.2.0.
+Product files api.py, runtime.py, and report.py are the v0.3 policy-wall
+port; ext.py and session.py are locked because they implement that wall.
+"""
 
 from __future__ import annotations
 
@@ -22,9 +27,11 @@ FROZEN_SHA256 = {
     "src/shards/models.py": "65f05a27d850f36b2e762a98e9c40a66d5c03c9b0b6cd1675a7df3a72286801d",
     "src/constraints/constraint_middleware.py": "0432933bac4adde9ba555fbb6dce478ae8450b7eb32c5e6ce0f0d7512b0dca41",
     "src/agents/recursive_agent.py": "ba8e53bedd3acd6d230b236ac524bb0f1f386eca861cae64c5ec6c099de70859",
-    "ai4/constrain/api.py": "b966fee35c1df3643f1e21dc91470e00746251304ab4469dfc05772aefeb67f8",
-    "ai4/constrain/runtime.py": "b9b0c23a56f9cb9632f282e3b832360f56908dd6b1eb1e41cffcd2efa2c2886b",
-    "ai4/constrain/report.py": "4919aa0c36fcef6987a3bef31c86204e394eed86bc05b212d86ebdf2b555e82b",
+    "ai4/constrain/api.py": "c77b6e602e4de9451fdf03e3380906f41f0ac3c0fd81390433c28089957eb50a",
+    "ai4/constrain/runtime.py": "aebe5604384b700b0be1a706d8e5ed05c8a28573c7afbd1d3f63473eed09029c",
+    "ai4/constrain/report.py": "a53733346642999a4a72089bf653269680b960cfaba862a5294991526e7c3e76",
+    "ai4/constrain/ext.py": "4abc9dd1b2c8c7fd9df284cf4be1f7728314060baba578757d677958d30ec5a4",
+    "ai4/constrain/session.py": "3a2693fa2d7d2e056b24bbfc0877b9e32faaa991caa278d31ed1d8d855e12bb6",
     "ai4/constrain/privacy.py": "87e9eaf077b84e60813ef3e1142c29e9e0d38ccc2e42fe0fca9ceb9fd46ecb58",
     "docs/protocol-v0.1.md": "e55a00f81701efa181eec65a9c67a94b077575796b850ad9eee47bea30c83ca7",
 }

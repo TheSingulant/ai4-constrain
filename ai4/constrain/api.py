@@ -15,18 +15,27 @@ from src.shards.shard_loader import REQUIRED_IDS
 
 from ai4.constrain.errors import ConstraintExecutionError
 from ai4.constrain.ext import (
+    EVALUATE_ONLY_PROVIDER_ID,
     EvaluatorBackend,
     GuardedEvaluator,
+    PROPOSAL_RESOLVED_AS_ARGUMENT,
+    PROPOSAL_RESOLVED_AS_CONFIG,
+    PROPOSAL_RESOLVED_AS_CUSTOM,
+    PROPOSAL_RESOLVED_AS_EVALUATE,
     ProviderBackend,
     REQUIRED_SHARD_IDS,
+    SECRET_METADATA_KEYS,
     assert_complete_evaluation,
-    preflight_evaluator,
+    bind_evaluator,
+    checked_completion,
+    evaluator_identity,
     resolve_evaluator,
-    resolve_provider,
+    resolve_proposal,
 )
 from ai4.constrain.report import (
     CallTelemetry,
     DecisionReport,
+    ProposalIdentity,
     RevisionStep,
     Telemetry,
     VersionInfo,
@@ -47,18 +56,6 @@ from ai4.constrain.runtime import (
     RuntimeConfig,
 )
 
-_SECRET_METADATA_KEYS = frozenset(
-    {
-        "api_key",
-        "apikey",
-        "authorization",
-        "token",
-        "password",
-        "secret",
-        "bearer",
-    }
-)
-
 
 class _ProposalFirstProvider:
     """Issue a caller-supplied draft as the first completion, then delegate."""
@@ -73,7 +70,7 @@ class _ProposalFirstProvider:
         if not self._issued:
             self._issued = True
             model = getattr(self._inner, "model", None) or getattr(self._inner, "name", "supplied")
-            return Completion(text=self._proposal, model=str(model), metadata={"kind": "supplied"})
+            return checked_completion(Completion(text=self._proposal, model=str(model)))
         return self._inner.complete(system=system, user=user)
 
     def revise(self, *, system: str, user: str, draft: str, feedback: str) -> Completion:
@@ -138,27 +135,30 @@ def _versions(evaluator: EvaluatorBackend) -> VersionInfo:
         condition=CONDITION,
         evidence_class=EVIDENCE_CLASS,
         rubric_set="v0.1",
-        evaluator_id=str(getattr(evaluator, "backend_id", "unknown")),
+        evaluator_id=evaluator_identity(evaluator),
         evaluator_version=str(getattr(evaluator, "version", "")),
         arbitration=ARBITRATION_VERSION,
         rubric_versions=_rubric_versions(evaluator),
     )
 
 
-def _reject_secret_metadata(metadata: object) -> None:
-    if not metadata:
-        return
-    if not isinstance(metadata, dict):
-        return
-    leaked = {str(key).lower() for key in metadata} & _SECRET_METADATA_KEYS
-    if leaked:
-        raise ConstraintExecutionError(
-            f"Provider metadata included secret key(s) {sorted(leaked)}; refusing to record them"
-        )
+def _proposal_identity(resolution) -> ProposalIdentity:
+    return ProposalIdentity(
+        provider_id=resolution.provider_id,
+        model=resolution.model,
+        resolved_as=resolution.resolved_as,
+    )
+
+
+def _evaluate_only_proposal() -> ProposalIdentity:
+    return ProposalIdentity(
+        provider_id=EVALUATE_ONLY_PROVIDER_ID,
+        model="",
+        resolved_as=PROPOSAL_RESOLVED_AS_EVALUATE,
+    )
 
 
 def _call_telemetry(completion: Completion, *, kind: str) -> CallTelemetry:
-    _reject_secret_metadata(completion.metadata)
     return CallTelemetry(
         model=str(completion.model or ""),
         prompt_tokens=int(completion.prompt_tokens),
@@ -170,22 +170,23 @@ def _call_telemetry(completion: Completion, *, kind: str) -> CallTelemetry:
 
 
 def _telemetry(
-    provider: ProviderBackend | None,
+    proposal: ProposalIdentity,
     completions: Sequence[Completion],
     *,
     supplied_first: bool,
 ) -> Telemetry:
     per_call: list[CallTelemetry] = []
     for index, completion in enumerate(completions):
-        kind = "supplied" if supplied_first and index == 0 else ("revise" if index else "complete")
-        if completion.metadata.get("kind") == "supplied":
+        if supplied_first and index == 0:
             kind = "supplied"
+        elif index:
+            kind = "revise"
+        else:
+            kind = "complete"
         per_call.append(_call_telemetry(completion, kind=kind))
-    model = per_call[-1].model if per_call else str(
-        getattr(provider, "model", "") or getattr(provider, "name", "") or ""
-    )
+    model = per_call[-1].model if per_call else proposal.model
     return Telemetry(
-        provider=str(getattr(provider, "name", "") or "none"),
+        provider=proposal.provider_id,
         model=model,
         calls=len(per_call),
         prompt_tokens=sum(item.prompt_tokens for item in per_call),
@@ -269,7 +270,7 @@ def _report_from_run(
     result: RunResult,
     prompt: str,
     evaluator: EvaluatorBackend,
-    provider: ProviderBackend,
+    proposal: ProposalIdentity,
     captures: Sequence[tuple[Evaluation, ConstraintDecision, str]],
     supplied_first: bool,
     prompt_specified_shards: tuple[str, ...],
@@ -289,6 +290,16 @@ def _report_from_run(
             )
         arbitration = arbitration_record(last[1].arbitration)
     initial = result.completions[0].text if result.completions else ""
+    model = proposal.model
+    if result.completions:
+        last_model = str(result.completions[-1].model or "")
+        if last_model:
+            model = last_model
+    identity = ProposalIdentity(
+        provider_id=proposal.provider_id,
+        model=model,
+        resolved_as=proposal.resolved_as,
+    )
     return DecisionReport(
         schema_version=REPORT_SCHEMA_VERSION,
         mode="constrained_loop",
@@ -311,7 +322,8 @@ def _report_from_run(
             prompt_specified_shards=prompt_specified_shards,
         ),
         final_output=result.text,
-        telemetry=_telemetry(provider, result.completions, supplied_first=supplied_first),
+        telemetry=_telemetry(identity, result.completions, supplied_first=supplied_first),
+        proposal=identity,
         versions=_versions(evaluator),
         redacted=False,
     )
@@ -365,7 +377,7 @@ def evaluate(
         revision_trace=(),
         final_output=text,
         telemetry=Telemetry(
-            provider="none",
+            provider=EVALUATE_ONLY_PROVIDER_ID,
             model="",
             calls=0,
             prompt_tokens=0,
@@ -373,6 +385,7 @@ def evaluate(
             latency_ms=0.0,
             estimated_usd=0.0,
         ),
+        proposal=_evaluate_only_proposal(),
         versions=_versions(backend),
         redacted=False,
     )
@@ -416,11 +429,27 @@ def run(
     if redact is not None:
         cfg = replace(cfg, redact=redact)
     specified = _validate_specified(prompt_specified_shards)
+    if (
+        provider is not None
+        and evaluator is not None
+        and not isinstance(provider, str)
+        and not isinstance(evaluator, str)
+        and provider is evaluator
+    ):
+        raise ConstraintExecutionError(
+            "Proposal provider and evaluator must be distinct call-site objects; "
+            "a dual-role object cannot cross the provider/evaluator boundary"
+        )
     eval_spec = evaluator if evaluator is not None else cfg.evaluator_id
-    prov_spec = provider if provider is not None else cfg.provider_id
-    backend = GuardedEvaluator(resolve_evaluator(eval_spec, rubric_set=cfg.rubric_set))
-    preflight_evaluator(backend)
-    resolved = resolve_provider(prov_spec)
+    backend = bind_evaluator(eval_spec, rubric_set=cfg.rubric_set)
+    if provider is None:
+        resolution = resolve_proposal(cfg.provider_id, resolved_as=PROPOSAL_RESOLVED_AS_CONFIG)
+    elif isinstance(provider, str):
+        resolution = resolve_proposal(provider, resolved_as=PROPOSAL_RESOLVED_AS_ARGUMENT)
+    else:
+        resolution = resolve_proposal(provider, resolved_as=PROPOSAL_RESOLVED_AS_CUSTOM)
+    resolved = resolution.backend
+    identity = _proposal_identity(resolution)
     supplied_first = proposal is not None
     loop_provider: ProviderBackend = (
         _ProposalFirstProvider(resolved, proposal) if supplied_first else resolved
@@ -449,7 +478,7 @@ def run(
         result=result,
         prompt=prompt,
         evaluator=backend,
-        provider=resolved,
+        proposal=identity,
         captures=recorder.captures,
         supplied_first=supplied_first,
         prompt_specified_shards=specified,
@@ -458,4 +487,4 @@ def run(
     return _maybe_redact(report, cfg.redact)
 
 
-SECRET_METADATA_KEYS = _SECRET_METADATA_KEYS
+SECRET_METADATA_KEYS = SECRET_METADATA_KEYS

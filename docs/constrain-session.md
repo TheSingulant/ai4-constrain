@@ -27,6 +27,17 @@ Each `complete()` calls `run()` with the current prompt (and the same
 fail-closed evaluator / provider rules). Session state is the ordered
 list of turns plus constructor-governed `RuntimeConfig`.
 
+A session created or restored under one legitimate proposal provider may
+continue under another. `SessionPolicyIdentity` does **not** include
+`provider_id`. Each turn's `DecisionReport.proposal` records which
+proposal backend produced that candidate. History remains untrusted
+context.
+
+**Provider interchange does not demonstrate alignment persistence across models.**
+Substitution is a control-loop audit property, not a claim that two
+proposal models are equivalently aligned. Stage 2D remains
+`null_retained_D_adds_cost`.
+
 `last_output` is **trusted terminal assistant output**, not
 `DecisionReport.final_output`. A failing candidate, timeout, or
 budget-exhausted draft is stored on the report for audit and does not
@@ -100,18 +111,21 @@ selects JSON snapshots (`<id>.json`). Session ids must match
 
 Constructor and runtime `RuntimeConfig` are **authority** for governing
 and security settings (`redact`, `include_history`, `max_history_turns`,
-evaluator/rubric identity).
+evaluator/rubric identity). Proposal provider identity is **not**
+governing policy. It may change between turns and across restore.
 
 A `FileSessionStore` snapshot records:
 
 - `schema_version` (`0.1.1`) and `session_id`
 - timestamps
 - `policy_identity` (runtime/report/protocol/condition/evidence class,
-  rubric set, evaluator id, arbitration) as **validation metadata**
+  rubric set, evaluator id, arbitration) as **validation metadata**.
+  This block does **not** include proposal provider or model.
 - `include_history`, `max_history_turns`, `redact` as **validation
   metadata** from the writing process
-- `turns` (user prompt, composed prompt, DecisionReport audit, derived
-  shard card, derived `trusted_output`)
+- `turns` (user prompt, composed prompt, DecisionReport audit including
+  per-turn `proposal` identity, derived shard card, derived
+  `trusted_output`)
 
 On restore:
 
@@ -175,7 +189,16 @@ session fails closed.
 ## Fail-closed / privacy
 
 - Unknown evaluator / provider / rubric set still fail closed (PR-A).
-- Dry-run refuses the live provider.
+- Dry-run refuses the live provider. Choosing another provider name
+  (for example `openai`) does not bypass unknown-id or live spend/network
+  gates.
+- A per-turn evaluator that disagrees with the constructor/session
+  governing evaluator identity fails closed and does not commit a turn.
+  The evaluator object actually about to be used is revalidated on every
+  `complete()` / `evaluate_text()` against the identity bound at
+  construction/load, even when no per-turn `evaluator=` argument is
+  supplied. Mutating `backend_id` after bind cannot commit a mismatched
+  turn.
 - Default redaction still applies wherever a `DecisionReport` is emitted,
   including after restore, because `redact` is constructor authority.
 - Persist failures roll back the in-memory turn so a later load cannot

@@ -8,9 +8,11 @@ product API.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Protocol
 
 from src.providers.base import Completion, LLMProvider
+from src.providers.live import LiveSpendError
 from src.providers.mock import HeuristicMockProvider
 from src.shards.models import Evaluation
 from src.shards.shard_evaluator import ShardEvaluator
@@ -26,6 +28,86 @@ REQUIRED_SHARD_IDS = REQUIRED_IDS
 KNOWN_PROVIDER_IDS = ("mock", "live")
 KNOWN_EVALUATOR_IDS = (FROZEN_EVALUATOR_ID,)
 PREFLIGHT_PROBE = "[[ai4.constrain.preflight]]"
+EVALUATE_ONLY_PROVIDER_ID = "none"
+PROPOSAL_RESOLVED_AS_CONFIG = "config"
+PROPOSAL_RESOLVED_AS_ARGUMENT = "explicit_argument"
+PROPOSAL_RESOLVED_AS_CUSTOM = "custom_object"
+PROPOSAL_RESOLVED_AS_EVALUATE = "evaluate_only"
+
+SECRET_METADATA_KEYS = frozenset(
+    {
+        "api_key",
+        "apikey",
+        "authorization",
+        "token",
+        "password",
+        "secret",
+        "bearer",
+    }
+)
+# Frozen mock/live completions do not require provider metadata. Anything
+# present is untrusted telemetry and fails closed unless explicitly listed.
+ALLOWED_COMPLETION_METADATA_KEYS = frozenset()
+POLICY_METADATA_KEYS = frozenset(
+    {
+        "arbitration",
+        "condition",
+        "config",
+        "enforced_shards",
+        "evaluator",
+        "evaluator_id",
+        "evaluator_version",
+        "evidence_class",
+        "include_history",
+        "max_completions",
+        "max_history_turns",
+        "max_revision_rounds",
+        "pass_threshold",
+        "policy",
+        "policy_identity",
+        "prompt_specified_shards",
+        "protocol",
+        "redact",
+        "refusal",
+        "refusal_text",
+        "report_schema_version",
+        "rubric",
+        "rubric_set",
+        "rubric_versions",
+        "runtime_config",
+        "runtime_version",
+        "safe_refusal",
+        "session_policy",
+        "session_policy_identity",
+        "shard_control",
+        "shard_control_scope",
+        "specified_shards",
+        "threshold",
+        "thresholds",
+        "timeout_s",
+        "versions",
+    }
+)
+RESERVED_PROVIDER_IDENTITIES = frozenset(
+    {
+        FROZEN_EVALUATOR_ID,
+        *KNOWN_EVALUATOR_IDS,
+        EVALUATE_ONLY_PROVIDER_ID,
+        *POLICY_METADATA_KEYS,
+        "backend_id",
+        "constraint",
+        "decision",
+        "decision_report",
+        "frozen",
+        "governing",
+        "middleware",
+        "provider",
+        "provider_id",
+        "sessionpolicyidentity",
+        "shard_evaluator",
+        "v0.1",
+    }
+)
 
 ProviderBackend = LLMProvider
 
@@ -105,7 +187,7 @@ class GuardedEvaluator:
 
     def __init__(self, inner: EvaluatorBackend) -> None:
         self._inner = inner
-        self.backend_id = str(getattr(inner, "backend_id", "custom"))
+        self.backend_id = evaluator_identity(inner)
         self.version = str(getattr(inner, "version", ""))
         self.rubrics = getattr(inner, "rubrics", ()) or ()
         self.calls: list[Evaluation] = []
@@ -157,20 +239,270 @@ def resolve_evaluator(
     return evaluator
 
 
-def resolve_provider(provider: str | ProviderBackend | None = "mock") -> ProviderBackend:
-    if provider is None or provider == "mock":
-        return HeuristicMockProvider()
-    if isinstance(provider, str):
-        if provider == "live":
-            from src.providers.live import LiveProvider
+def evaluator_identity(evaluator: str | EvaluatorBackend | None) -> str:
+    """Governing evaluator identity. Never inferred from a proposal provider."""
+    if evaluator is None:
+        return FROZEN_EVALUATOR_ID
+    if isinstance(evaluator, str):
+        ident = evaluator.strip()
+        if not ident:
+            raise ConstraintExecutionError("Evaluator identity must be non-empty")
+        return ident
+    ident = str(getattr(evaluator, "backend_id", "") or "").strip()
+    if not ident:
+        raise ConstraintExecutionError("Evaluator backend must expose a non-empty backend_id")
+    return ident
 
-            return LiveProvider()
+
+def bind_evaluator(
+    evaluator: str | EvaluatorBackend | None = None,
+    *,
+    rubric_set: str = FROZEN_RUBRIC_SET,
+) -> GuardedEvaluator:
+    """Resolve, identity-check, and preflight before any proposal generation."""
+    ident = evaluator_identity(evaluator)
+    if isinstance(evaluator, str) or evaluator is None:
+        if ident not in KNOWN_EVALUATOR_IDS:
+            raise ConstraintExecutionError(
+                f"Unknown evaluator {ident!r}. Registered: {KNOWN_EVALUATOR_IDS}"
+            )
+    resolved = resolve_evaluator(evaluator, rubric_set=rubric_set)
+    backend = GuardedEvaluator(resolved)
+    bound = evaluator_identity(backend)
+    if bound != ident:
         raise ConstraintExecutionError(
-            f"Unknown provider {provider!r}. Registered: {KNOWN_PROVIDER_IDS}"
+            f"Evaluator identity {bound!r} does not match resolved identity {ident!r}"
         )
+    preflight_evaluator(backend)
+    return backend
+
+
+def reject_completion_metadata(metadata: object) -> None:
+    """Fail closed unless metadata is empty or uses only the explicit allowlist.
+
+    Nested objects/arrays are never permitted. Provider-controlled keys such as
+    ``kind`` are not authority for call classification.
+    """
+    if metadata is None:
+        return
+    if not isinstance(metadata, dict):
+        raise ConstraintExecutionError(
+            "Provider metadata must be an object; refusing non-object metadata"
+        )
+    if not metadata:
+        return
+    extra = sorted({str(key) for key in metadata} - set(ALLOWED_COMPLETION_METADATA_KEYS))
+    if extra:
+        raise ConstraintExecutionError(
+            f"Provider metadata included unpermitted key(s) {extra}; "
+            "proposal metadata is untrusted telemetry and only explicitly "
+            "permitted fields are accepted"
+        )
+    for key, value in metadata.items():
+        if isinstance(value, (dict, list, tuple)):
+            raise ConstraintExecutionError(
+                f"Provider metadata field {key!r} must be a scalar; "
+                "nested metadata is not permitted"
+            )
+
+
+def is_live_provider(provider: object) -> bool:
+    """True for the gated live HTTP backend. Names like 'openai' are not live."""
+    if provider is None:
+        return False
+    if provider == "live":
+        return True
+    if isinstance(provider, str):
+        return False
+    try:
+        from src.providers.live import LiveProvider
+    except Exception:
+        LiveProvider = None  # type: ignore[misc, assignment]
+    if LiveProvider is not None and isinstance(provider, LiveProvider):
+        return True
+    name = str(getattr(provider, "name", "") or getattr(provider, "provider_id", "") or "")
+    return name.strip().lower() == "live"
+
+
+def _normalize_provider_identity(raw: str) -> str:
+    ident = raw.strip()
+    if not ident:
+        raise ConstraintExecutionError(
+            "Custom proposal provider must expose a non-empty name or provider_id"
+        )
+    return ident
+
+
+def _assert_provider_identity_allowed(ident: str) -> str:
+    folded = ident.strip().lower()
+    if not folded:
+        raise ConstraintExecutionError(
+            "Custom proposal provider must expose a non-empty name or provider_id"
+        )
+    reserved = {item.lower() for item in RESERVED_PROVIDER_IDENTITIES}
+    if folded in reserved:
+        raise ConstraintExecutionError(
+            f"Proposal provider identity {ident!r} collides with evaluator or "
+            "policy/control identity; refusing to infer governing policy from "
+            "a provider-controlled string"
+        )
+    return ident.strip()
+
+
+def _custom_provider_identity(provider: ProviderBackend) -> str:
+    for attr in ("provider_id", "name"):
+        value = getattr(provider, attr, None)
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            return _assert_provider_identity_allowed(text)
+    raise ConstraintExecutionError(
+        "Custom proposal provider must expose a non-empty name or provider_id"
+    )
+
+
+def checked_completion(completion: object) -> Completion:
+    """Accept a Completion after allowlisting metadata. Never keep provider metadata."""
+    if not isinstance(completion, Completion):
+        raise ConstraintExecutionError("Proposal provider must return a Completion")
+    reject_completion_metadata(completion.metadata)
+    if not completion.metadata:
+        return completion
+    return Completion(
+        text=completion.text,
+        prompt_tokens=completion.prompt_tokens,
+        completion_tokens=completion.completion_tokens,
+        latency_ms=completion.latency_ms,
+        estimated_usd=completion.estimated_usd,
+        model=completion.model,
+        metadata={},
+    )
+
+
+@dataclass(frozen=True)
+class ProposalResolution:
+    """Resolved proposal backend plus auditable identity. Not policy."""
+
+    backend: ProviderBackend
+    provider_id: str
+    model: str
+    resolved_as: str
+
+    def identity_payload(self) -> dict[str, str]:
+        return {
+            "provider_id": self.provider_id,
+            "model": self.model,
+            "resolved_as": self.resolved_as,
+        }
+
+
+class GuardedProposalProvider:
+    """Proposal backends emit candidate text. They do not govern.
+
+    ``evaluate``, rubrics, thresholds, and policy attributes on a dual-role
+    object are not exposed at this call site.
+    """
+
+    def __init__(
+        self,
+        inner: ProviderBackend,
+        *,
+        provider_id: str,
+        model: str,
+        resolved_as: str,
+    ) -> None:
+        self._inner = inner
+        self.name = provider_id
+        self.model = model
+        self.provider_id = provider_id
+        self.resolved_as = resolved_as
+
+    @property
+    def resolution(self) -> ProposalResolution:
+        return ProposalResolution(
+            backend=self,
+            provider_id=self.provider_id,
+            model=self.model,
+            resolved_as=self.resolved_as,
+        )
+
+    def complete(self, *, system: str, user: str) -> Completion:
+        try:
+            completion = self._inner.complete(system=system, user=user)
+        except (ConstraintExecutionError, LiveSpendError):
+            raise
+        except Exception as exc:
+            raise ConstraintExecutionError(f"Proposal provider failed closed: {exc}") from exc
+        return checked_completion(completion)
+
+    def revise(self, *, system: str, user: str, draft: str, feedback: str) -> Completion:
+        try:
+            completion = self._inner.revise(
+                system=system, user=user, draft=draft, feedback=feedback
+            )
+        except (ConstraintExecutionError, LiveSpendError):
+            raise
+        except Exception as exc:
+            raise ConstraintExecutionError(f"Proposal provider failed closed: {exc}") from exc
+        return checked_completion(completion)
+
+
+def _instantiate_known_provider(provider_id: str) -> ProviderBackend:
+    if provider_id == "mock":
+        return HeuristicMockProvider()
+    if provider_id == "live":
+        from src.providers.live import LiveProvider
+
+        return LiveProvider()
+    raise ConstraintExecutionError(
+        f"Unknown provider {provider_id!r}. Registered: {KNOWN_PROVIDER_IDS}"
+    )
+
+
+def _guard(
+    inner: ProviderBackend, *, provider_id: str, model: str, resolved_as: str
+) -> ProposalResolution:
+    guarded = GuardedProposalProvider(
+        inner, provider_id=provider_id, model=model, resolved_as=resolved_as
+    )
+    return guarded.resolution
+
+
+def resolve_proposal(
+    provider: str | ProviderBackend | None = "mock",
+    *,
+    resolved_as: str = PROPOSAL_RESOLVED_AS_CONFIG,
+) -> ProposalResolution:
+    """Resolve a proposal backend. Provider output cannot set governing policy."""
+    if provider is None:
+        provider = "mock"
+        resolved_as = PROPOSAL_RESOLVED_AS_CONFIG
+    if isinstance(provider, str):
+        ident = _normalize_provider_identity(provider)
+        if ident not in KNOWN_PROVIDER_IDS:
+            raise ConstraintExecutionError(
+                f"Unknown provider {ident!r}. Registered: {KNOWN_PROVIDER_IDS}"
+            )
+        backend = _instantiate_known_provider(ident)
+        model = str(getattr(backend, "model", "") or "")
+        return _guard(backend, provider_id=ident, model=model, resolved_as=resolved_as)
     if not hasattr(provider, "complete") or not hasattr(provider, "revise"):
         raise ConstraintExecutionError("Provider backend must implement complete() and revise()")
-    return provider
+    if isinstance(provider, GuardedProposalProvider):
+        return provider.resolution
+    ident = _custom_provider_identity(provider)
+    model = str(getattr(provider, "model", "") or "")
+    source = (
+        PROPOSAL_RESOLVED_AS_CUSTOM
+        if resolved_as == PROPOSAL_RESOLVED_AS_CONFIG
+        else resolved_as
+    )
+    return _guard(provider, provider_id=ident, model=model, resolved_as=source)
+
+
+def resolve_provider(provider: str | ProviderBackend | None = "mock") -> ProviderBackend:
+    return resolve_proposal(provider).backend
 
 
 def session_store(path: str | None = None, *args, **kwargs) -> SessionStore:
@@ -190,22 +522,39 @@ def session_store(path: str | None = None, *args, **kwargs) -> SessionStore:
 
 
 __all__ = [
+    "ALLOWED_COMPLETION_METADATA_KEYS",
     "Completion",
+    "EVALUATE_ONLY_PROVIDER_ID",
     "EvaluatorBackend",
     "FROZEN_EVALUATOR_ID",
     "FROZEN_EVALUATOR_VERSION",
     "FROZEN_RUBRIC_SET",
     "FrozenV01RegexEvaluator",
     "GuardedEvaluator",
+    "GuardedProposalProvider",
     "KNOWN_EVALUATOR_IDS",
     "KNOWN_PROVIDER_IDS",
+    "POLICY_METADATA_KEYS",
     "PREFLIGHT_PROBE",
+    "PROPOSAL_RESOLVED_AS_ARGUMENT",
+    "PROPOSAL_RESOLVED_AS_CONFIG",
+    "PROPOSAL_RESOLVED_AS_CUSTOM",
+    "PROPOSAL_RESOLVED_AS_EVALUATE",
+    "ProposalResolution",
     "ProviderBackend",
     "REQUIRED_SHARD_IDS",
+    "RESERVED_PROVIDER_IDENTITIES",
+    "SECRET_METADATA_KEYS",
     "SessionStore",
     "assert_complete_evaluation",
+    "bind_evaluator",
+    "checked_completion",
+    "evaluator_identity",
+    "is_live_provider",
     "preflight_evaluator",
+    "reject_completion_metadata",
     "resolve_evaluator",
+    "resolve_proposal",
     "resolve_provider",
     "session_store",
 ]

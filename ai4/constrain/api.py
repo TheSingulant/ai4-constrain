@@ -17,7 +17,6 @@ from ai4.constrain.errors import ConstraintExecutionError
 from ai4.constrain.ext import (
     EVALUATE_ONLY_PROVIDER_ID,
     EvaluatorBackend,
-    GuardedEvaluator,
     PROPOSAL_RESOLVED_AS_ARGUMENT,
     PROPOSAL_RESOLVED_AS_CONFIG,
     PROPOSAL_RESOLVED_AS_CUSTOM,
@@ -29,12 +28,14 @@ from ai4.constrain.ext import (
     bind_evaluator,
     checked_completion,
     evaluator_identity,
-    resolve_evaluator,
+    evaluator_resolved_as,
     resolve_proposal,
 )
+from ai4.constrain.evaluator_wall import packaged_policy_rubrics
 from ai4.constrain.report import (
     CallTelemetry,
     DecisionReport,
+    EvaluatorIdentity,
     ProposalIdentity,
     RevisionStep,
     Telemetry,
@@ -122,9 +123,8 @@ def _validate_specified(specified: Sequence[str] | None) -> tuple[str, ...]:
     return specified_shards
 
 
-def _rubric_versions(evaluator: EvaluatorBackend) -> dict[str, str]:
-    rubrics = getattr(evaluator, "rubrics", ()) or ()
-    return {str(item.id): str(item.version) for item in rubrics}
+def _rubric_versions() -> dict[str, str]:
+    return {str(item.id): str(item.version) for item in packaged_policy_rubrics()}
 
 
 def _versions(evaluator: EvaluatorBackend) -> VersionInfo:
@@ -136,9 +136,18 @@ def _versions(evaluator: EvaluatorBackend) -> VersionInfo:
         evidence_class=EVIDENCE_CLASS,
         rubric_set="v0.1",
         evaluator_id=evaluator_identity(evaluator),
-        evaluator_version=str(getattr(evaluator, "version", "")),
+        evaluator_version=str(getattr(evaluator, "version", "") or ""),
         arbitration=ARBITRATION_VERSION,
-        rubric_versions=_rubric_versions(evaluator),
+        rubric_versions=_rubric_versions(),
+    )
+
+
+def _evaluator_provenance(evaluator: EvaluatorBackend) -> EvaluatorIdentity:
+    resolved_as = str(getattr(evaluator, "resolved_as", "") or evaluator_resolved_as(evaluator))
+    return EvaluatorIdentity(
+        evaluator_id=evaluator_identity(evaluator),
+        evaluator_version=str(getattr(evaluator, "version", "") or ""),
+        resolved_as=resolved_as,
     )
 
 
@@ -197,11 +206,11 @@ def _telemetry(
     )
 
 
-def _middleware(evaluator: EvaluatorBackend, max_revision_rounds: int) -> ConstraintMiddleware:
-    rubrics = tuple(getattr(evaluator, "rubrics", ()) or ())
-    if not rubrics:
-        raise ConstraintExecutionError("Evaluator backend did not expose frozen rubrics")
-    return ConstraintMiddleware(rubrics=rubrics, max_revision_rounds=max_revision_rounds)
+def _middleware(max_revision_rounds: int) -> ConstraintMiddleware:
+    return ConstraintMiddleware(
+        rubrics=packaged_policy_rubrics(),
+        max_revision_rounds=max_revision_rounds,
+    )
 
 
 def _maybe_redact(report: DecisionReport, redact: bool) -> DecisionReport:
@@ -324,6 +333,7 @@ def _report_from_run(
         final_output=result.text,
         telemetry=_telemetry(identity, result.completions, supplied_first=supplied_first),
         proposal=identity,
+        evaluator=_evaluator_provenance(evaluator),
         versions=_versions(evaluator),
         redacted=False,
     )
@@ -353,9 +363,13 @@ def evaluate(
     if not isinstance(text, str):
         raise ConstraintExecutionError("evaluate() requires a text string")
     specified = _validate_specified(prompt_specified_shards)
-    backend = GuardedEvaluator(resolve_evaluator(evaluator, rubric_set=rubric_set))
+    backend = bind_evaluator(
+        evaluator,
+        rubric_set=rubric_set,
+        resolved_as=evaluator_resolved_as(evaluator),
+    )
     evaluation = backend.evaluate(text)
-    middleware = _middleware(backend, max_revision_rounds)
+    middleware = _middleware(max_revision_rounds)
     decision = middleware.decide(evaluation, revision_round=0)
     action = product_decision_from_action(decision.action)
     report = DecisionReport(
@@ -386,6 +400,7 @@ def evaluate(
             estimated_usd=0.0,
         ),
         proposal=_evaluate_only_proposal(),
+        evaluator=_evaluator_provenance(backend),
         versions=_versions(backend),
         redacted=False,
     )
@@ -441,7 +456,11 @@ def run(
             "a dual-role object cannot cross the provider/evaluator boundary"
         )
     eval_spec = evaluator if evaluator is not None else cfg.evaluator_id
-    backend = bind_evaluator(eval_spec, rubric_set=cfg.rubric_set)
+    backend = bind_evaluator(
+        eval_spec,
+        rubric_set=cfg.rubric_set,
+        resolved_as=evaluator_resolved_as(evaluator),
+    )
     if provider is None:
         resolution = resolve_proposal(cfg.provider_id, resolved_as=PROPOSAL_RESOLVED_AS_CONFIG)
     elif isinstance(provider, str):
@@ -454,7 +473,7 @@ def run(
     loop_provider: ProviderBackend = (
         _ProposalFirstProvider(resolved, proposal) if supplied_first else resolved
     )
-    recorder = RecordingMiddleware(_middleware(backend, cfg.max_revision_rounds))
+    recorder = RecordingMiddleware(_middleware(cfg.max_revision_rounds))
     agent = ConstrainedAgent(
         loop_provider,
         evaluator=backend,

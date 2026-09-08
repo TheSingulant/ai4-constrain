@@ -1,8 +1,9 @@
-"""Public export: lock scientific frozen bytes and v0.3 product files.
+"""Public export: lock scientific frozen bytes and v0.4 product files.
 
-Scientific/evaluator/D-controller bytes are unchanged from public v0.2.0.
-Product files api.py, runtime.py, and report.py are the v0.3 policy-wall
-port; ext.py and session.py are locked because they implement that wall.
+Scientific/evaluator/D-controller bytes are unchanged from public v0.3.0.
+Product files api.py, report.py, ext.py, session.py, and evaluator_wall.py
+are the v0.4 evaluator-policy-wall port; runtime.py and privacy.py are
+unchanged and remain locked.
 """
 
 from __future__ import annotations
@@ -27,11 +28,12 @@ FROZEN_SHA256 = {
     "src/shards/models.py": "65f05a27d850f36b2e762a98e9c40a66d5c03c9b0b6cd1675a7df3a72286801d",
     "src/constraints/constraint_middleware.py": "0432933bac4adde9ba555fbb6dce478ae8450b7eb32c5e6ce0f0d7512b0dca41",
     "src/agents/recursive_agent.py": "ba8e53bedd3acd6d230b236ac524bb0f1f386eca861cae64c5ec6c099de70859",
-    "ai4/constrain/api.py": "c77b6e602e4de9451fdf03e3380906f41f0ac3c0fd81390433c28089957eb50a",
+    "ai4/constrain/api.py": "c26d2fe1d0526da59435085ec4ef6fe3f2f5c22a4cd9ef62f26595fd3c1d1a41",
     "ai4/constrain/runtime.py": "aebe5604384b700b0be1a706d8e5ed05c8a28573c7afbd1d3f63473eed09029c",
-    "ai4/constrain/report.py": "a53733346642999a4a72089bf653269680b960cfaba862a5294991526e7c3e76",
-    "ai4/constrain/ext.py": "4abc9dd1b2c8c7fd9df284cf4be1f7728314060baba578757d677958d30ec5a4",
-    "ai4/constrain/session.py": "3a2693fa2d7d2e056b24bbfc0877b9e32faaa991caa278d31ed1d8d855e12bb6",
+    "ai4/constrain/report.py": "51748a6620c1af7135c2bb89eb928fbe858914039e3c9f98f912ad5548a8aca8",
+    "ai4/constrain/ext.py": "d22e02cc7693061427655847dd6131fd95a898092afacd509701de0a32b4d023",
+    "ai4/constrain/session.py": "f18650d13c58b73101d43cedeed555c6d130c6175503bb8a0fb27cac359ca596",
+    "ai4/constrain/evaluator_wall.py": "f146713893745d64b0cf823f2ac9c3fa10bcccf0400d493d80dc2bcb458e308d",
     "ai4/constrain/privacy.py": "87e9eaf077b84e60813ef3e1142c29e9e0d38ccc2e42fe0fca9ceb9fd46ecb58",
     "docs/protocol-v0.1.md": "e55a00f81701efa181eec65a9c67a94b077575796b850ad9eee47bea30c83ca7",
 }

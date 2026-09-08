@@ -323,6 +323,76 @@ class ProposalIdentity:
         )
 
 
+EVALUATOR_IDENTITY_KEYS = ("evaluator_id", "evaluator_version", "resolved_as")
+EVALUATOR_RESOLVED_AS = (
+    "config",
+    "explicit_argument",
+    "custom_object",
+    "legacy_versions",
+)
+
+
+@dataclass(frozen=True)
+class EvaluatorIdentity:
+    """Auditable evaluator-implementation provenance. Not governing policy.
+
+    Changing the evaluator implementation may change scores and the resulting
+    decision. It must not change packaged rubric set, kinds, priorities,
+    thresholds, conflicts, pass/fail derivation, arbitration, enforced shards,
+    refusal semantics, RuntimeConfig security settings, or evidence class.
+
+    Evaluator implementation interchange does not demonstrate alignment
+    persistence or correctness across judges.
+    """
+
+    evaluator_id: str
+    evaluator_version: str = ""
+    resolved_as: str = "config"
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "evaluator_id": self.evaluator_id,
+            "evaluator_version": self.evaluator_version,
+            "resolved_as": self.resolved_as,
+        }
+
+    @classmethod
+    def from_versions(cls, versions: VersionInfo) -> EvaluatorIdentity:
+        """Reconstruct provenance from schema 0.1.0 versions-only reports."""
+        return cls(
+            evaluator_id=str(versions.evaluator_id or ""),
+            evaluator_version=str(versions.evaluator_version or ""),
+            resolved_as="legacy_versions",
+        )
+
+    @classmethod
+    def from_dict(cls, raw: object) -> EvaluatorIdentity:
+        if not isinstance(raw, dict):
+            raise ConstraintExecutionError("evaluator identity must be a JSON object")
+        extra = sorted(str(key) for key in raw if key not in EVALUATOR_IDENTITY_KEYS)
+        if extra:
+            raise ConstraintExecutionError(
+                f"Unknown evaluator identity field(s) {extra}; refusing policy smuggling"
+            )
+        missing = [key for key in EVALUATOR_IDENTITY_KEYS if key not in raw]
+        if missing:
+            raise ConstraintExecutionError(f"evaluator identity missing keys: {missing}")
+        evaluator_id = str(raw["evaluator_id"] or "").strip()
+        if not evaluator_id:
+            raise ConstraintExecutionError("evaluator.evaluator_id must be non-empty")
+        resolved_as = str(raw["resolved_as"] or "").strip()
+        if resolved_as not in EVALUATOR_RESOLVED_AS:
+            raise ConstraintExecutionError(
+                f"Unknown evaluator.resolved_as {resolved_as!r}. "
+                f"Allowed: {EVALUATOR_RESOLVED_AS}"
+            )
+        return cls(
+            evaluator_id=evaluator_id,
+            evaluator_version=str(raw.get("evaluator_version") or ""),
+            resolved_as=resolved_as,
+        )
+
+
 @dataclass(frozen=True)
 class VersionInfo:
     runtime_version: str
@@ -355,11 +425,16 @@ class VersionInfo:
         versions = raw.get("rubric_versions") or {}
         if not isinstance(versions, dict):
             raise ConstraintExecutionError("versions.rubric_versions must be an object")
-        smuggled = [key for key in ("provider", "provider_id", "model", "resolved_as") if key in raw]
+        smuggled = [
+            key
+            for key in ("provider", "provider_id", "model", "resolved_as", "evaluator")
+            if key in raw
+        ]
         if smuggled:
             raise ConstraintExecutionError(
                 f"versions must not include proposal identity field(s) {smuggled}; "
-                "provider/model are not governing policy"
+                "provider/model are not governing policy, and evaluator provenance "
+                "belongs on the evaluator block"
             )
         return cls(
             runtime_version=str(raw.get("runtime_version") or RUNTIME_VERSION),
@@ -456,12 +531,19 @@ class DecisionReport:
     candidate_evaluated: bool = True
     redacted: bool = True
     proposal: ProposalIdentity | None = None
+    evaluator: EvaluatorIdentity | None = None
 
     def proposal_identity(self) -> ProposalIdentity:
         """Auditable proposal identity; reconstructed from telemetry on old reports."""
         if self.proposal is not None:
             return self.proposal
         return ProposalIdentity.from_telemetry(self.telemetry)
+
+    def evaluator_identity(self) -> EvaluatorIdentity:
+        """Auditable evaluator provenance; reconstructed from versions on old reports."""
+        if self.evaluator is not None:
+            return self.evaluator
+        return EvaluatorIdentity.from_versions(self.versions)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -486,6 +568,7 @@ class DecisionReport:
             "final_output": self.final_output,
             "telemetry": self.telemetry.to_dict(),
             "proposal": self.proposal_identity().to_dict(),
+            "evaluator": self.evaluator_identity().to_dict(),
             "versions": self.versions.to_dict(),
             "redacted": self.redacted,
         }
@@ -510,6 +593,7 @@ class DecisionReport:
             revision_trace=tuple(item.redacted() for item in self.revision_trace),
             final_output=redact_text(self.final_output),
             proposal=self.proposal,
+            evaluator=self.evaluator,
             redacted=True,
         )
 
@@ -561,6 +645,24 @@ class DecisionReport:
             proposal = ProposalIdentity.from_telemetry(telemetry)
         else:
             proposal = ProposalIdentity.from_dict(proposal_raw)
+        versions = VersionInfo.from_dict(raw["versions"])
+        evaluator_raw = raw.get("evaluator")
+        if evaluator_raw is None:
+            evaluator = EvaluatorIdentity.from_versions(versions)
+        else:
+            evaluator = EvaluatorIdentity.from_dict(evaluator_raw)
+            if evaluator.evaluator_id != versions.evaluator_id:
+                raise ConstraintExecutionError(
+                    f"evaluator.evaluator_id {evaluator.evaluator_id!r} disagrees with "
+                    f"versions.evaluator_id {versions.evaluator_id!r}; refusing inconsistent "
+                    "evaluator provenance"
+                )
+            if evaluator.evaluator_version != versions.evaluator_version:
+                raise ConstraintExecutionError(
+                    f"evaluator.evaluator_version {evaluator.evaluator_version!r} disagrees "
+                    f"with versions.evaluator_version {versions.evaluator_version!r}; "
+                    "refusing inconsistent evaluator provenance"
+                )
         try:
             return cls(
                 schema_version=str(raw["schema_version"]),
@@ -586,7 +688,8 @@ class DecisionReport:
                 final_output=str(raw.get("final_output") or ""),
                 telemetry=telemetry,
                 proposal=proposal,
-                versions=VersionInfo.from_dict(raw["versions"]),
+                evaluator=evaluator,
+                versions=versions,
                 redacted=bool(raw["redacted"]) if "redacted" in raw else True,
             )
         except ConstraintExecutionError:

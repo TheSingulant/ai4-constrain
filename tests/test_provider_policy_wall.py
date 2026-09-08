@@ -482,6 +482,9 @@ def test_14_old_decision_reports_remain_loadable():
     assert identity.resolved_as == "legacy_telemetry"
     assert restored.versions.evaluator_id == "v0.1-regex"
     assert restored.versions.evidence_class == EVIDENCE_CLASS
+    provenance = restored.evaluator_identity()
+    assert provenance.evaluator_id == "v0.1-regex"
+    assert provenance.resolved_as == "legacy_versions"
     smuggled = dict(payload)
     smuggled["versions"] = dict(payload["versions"])
     smuggled["versions"]["provider_id"] = "mock"
@@ -575,7 +578,7 @@ class _EmptyBackendIdEvaluator:
 class _MutableEvaluator:
     def __init__(self) -> None:
         frozen = FrozenV01RegexEvaluator()
-        self.backend_id = "v0.1-regex"
+        self.backend_id = "mutable-eval"
         self.version = frozen.version
         self.rubrics = frozen.rubrics
         self._inner = frozen
@@ -690,7 +693,7 @@ def test_s3_mutated_session_evaluator_identity_fails_before_provider(tmp_path):
     assert provider.complete_calls == before_complete
     assert provider.revise_calls == before_revise
     assert len(session.turns) == 1
-    reloaded = ConstrainedSession.load("mutate-1", store=store, evaluator=FrozenV01RegexEvaluator())
+    reloaded = ConstrainedSession.load("mutate-1", store=store, evaluator=_MutableEvaluator())
     assert len(reloaded.turns) == 1
     assert reloaded.last_decision == "accept"
 

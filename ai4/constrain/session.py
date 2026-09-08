@@ -26,7 +26,17 @@ from src.constraints.constraint_middleware import SAFE_REFUSAL
 from ai4.constrain.api import evaluate, run
 from ai4.constrain.errors import ConstraintExecutionError
 from ai4.constrain.explain import ShardCard, format_explain, shard_card
-from ai4.constrain.ext import EvaluatorBackend, ProviderBackend, evaluator_identity, is_live_provider
+from ai4.constrain.ext import (
+    FROZEN_EVALUATOR_ID,
+    FROZEN_EVALUATOR_IMPL,
+    EvaluatorBackend,
+    ProviderBackend,
+    bind_evaluator,
+    evaluator_identity,
+    evaluator_impl_fingerprint,
+    evaluator_resolved_as,
+    is_live_provider,
+)
 from ai4.constrain.privacy import redact_text
 from ai4.constrain.report import DecisionReport
 from ai4.constrain.runtime import (
@@ -59,8 +69,18 @@ UNTRUSTED_HISTORY_BANNER = (
 )
 
 
-def session_policy_identity(config: RuntimeConfig) -> SessionPolicyIdentity:
-    """Frozen product identity this process will enforce. Not taken from JSON."""
+def session_policy_identity(
+    config: RuntimeConfig,
+    *,
+    evaluator_id: str | None = None,
+) -> SessionPolicyIdentity:
+    """Frozen product identity this process will enforce. Not taken from JSON.
+
+    ``evaluator_id`` is the bound implementation identity. When a custom
+    evaluator object is supplied, this is the object's ``backend_id``, not
+    the RuntimeConfig default. Config/object split-brain is refused by using
+    the bound identity for snapshots and restore validation.
+    """
     cfg = config.validate()
     return SessionPolicyIdentity(
         runtime_version=RUNTIME_VERSION,
@@ -69,7 +89,7 @@ def session_policy_identity(config: RuntimeConfig) -> SessionPolicyIdentity:
         condition=CONDITION,
         evidence_class=EVIDENCE_CLASS,
         rubric_set=cfg.rubric_set,
-        evaluator_id=cfg.evaluator_id,
+        evaluator_id=evaluator_id if evaluator_id is not None else cfg.evaluator_id,
         arbitration=ARBITRATION_VERSION,
     )
 
@@ -232,6 +252,7 @@ class SessionState:
     max_history_turns: int
     redact: bool
     turns: tuple[SessionTurn, ...] = ()
+    evaluator_impl: str = FROZEN_EVALUATOR_IMPL
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -240,6 +261,7 @@ class SessionState:
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "policy_identity": self.policy_identity.to_dict(),
+            "evaluator_impl": self.evaluator_impl,
             "include_history": self.include_history,
             "max_history_turns": self.max_history_turns,
             "redact": self.redact,
@@ -273,12 +295,17 @@ class SessionState:
                 f"Persisted max_history_turns must be between 0 and {_MAX_HISTORY_TURNS}"
             )
         try:
+            policy_identity = SessionPolicyIdentity.from_dict(raw.get("policy_identity"))
+            evaluator_impl = _restore_evaluator_impl(
+                raw.get("evaluator_impl"), evaluator_id=policy_identity.evaluator_id
+            )
             return cls(
                 session_id=validate_session_id(str(raw["session_id"])),
                 schema_version=SESSION_SCHEMA_VERSION,
                 created_at=str(raw.get("created_at") or ""),
                 updated_at=str(raw.get("updated_at") or ""),
-                policy_identity=SessionPolicyIdentity.from_dict(raw.get("policy_identity")),
+                policy_identity=policy_identity,
+                evaluator_impl=evaluator_impl,
                 include_history=bool(raw.get("include_history")),
                 max_history_turns=max_history,
                 redact=bool(raw["redact"]) if "redact" in raw else True,
@@ -348,6 +375,12 @@ class FileSessionStore:
       rubric set, evaluator id, arbitration) as **validation metadata**.
       Proposal provider/model are not in this block; they are per-turn
       DecisionReport audit fields.
+    - ``evaluator_impl`` (stable implementation fingerprint: frozen v0.1-regex
+      or ``custom:<module>.<qualname>``) as **validation metadata**. Old
+      snapshots that omit it remain loadable only for the packaged frozen
+      evaluator; a custom-evaluator snapshot missing this field fails closed
+      (no silent migrate). This is not a public registry and not cryptographic
+      attestation.
     - ``include_history``, ``max_history_turns``, and ``redact`` as
       **validation metadata** recorded from the writing process — these are
       not restored as governing configuration
@@ -466,8 +499,19 @@ class ConstrainedSession:
         self.config = cfg
         self.provider = provider
         self.evaluator = evaluator
-        self._governing_evaluator_id = evaluator_identity(
-            evaluator if evaluator is not None else cfg.evaluator_id
+        eval_spec = evaluator if evaluator is not None else cfg.evaluator_id
+        if isinstance(evaluator, str) and evaluator_identity(evaluator) != cfg.evaluator_id:
+            raise ConstraintExecutionError(
+                f"Evaluator identity {evaluator_identity(evaluator)!r} disagrees with "
+                f"RuntimeConfig.evaluator_id {cfg.evaluator_id!r}; refusing split-brain bind"
+            )
+        self._governing_evaluator_id = evaluator_identity(eval_spec)
+        self._governing_evaluator_impl = evaluator_impl_fingerprint(eval_spec)
+        # Bind/preflight/wall before restore or any proposal generation.
+        bind_evaluator(
+            eval_spec,
+            rubric_set=cfg.rubric_set,
+            resolved_as=evaluator_resolved_as(evaluator),
         )
         self.dry_run = bool(dry_run)
         self.persist = bool(persist)
@@ -484,10 +528,18 @@ class ConstrainedSession:
     def _adopt(self, state: SessionState) -> None:
         if state.session_id != self.session_id:
             raise ConstraintExecutionError("loaded session_id does not match")
-        expected = session_policy_identity(self.config)
+        expected = session_policy_identity(
+            self.config, evaluator_id=self._governing_evaluator_id
+        )
         if state.policy_identity != expected:
             raise ConstraintExecutionError(
                 "Incompatible session policy/runtime identity; refusing to restore"
+            )
+        if state.evaluator_impl != self._governing_evaluator_impl:
+            raise ConstraintExecutionError(
+                f"Evaluator implementation {state.evaluator_impl!r} disagrees with "
+                f"bound implementation {self._governing_evaluator_impl!r}; refusing "
+                "same-id class substitution. No silent migrate."
             )
         for turn in state.turns:
             _assert_turn_policy_identity(turn, expected)
@@ -559,7 +611,10 @@ class ConstrainedSession:
             schema_version=SESSION_SCHEMA_VERSION,
             created_at=self._created_at,
             updated_at=self._updated_at,
-            policy_identity=session_policy_identity(self.config),
+            policy_identity=session_policy_identity(
+                self.config, evaluator_id=self._governing_evaluator_id
+            ),
+            evaluator_impl=self._governing_evaluator_impl,
             include_history=self.include_history,
             max_history_turns=self.max_history_turns,
             redact=self.config.redact,
@@ -672,11 +727,13 @@ class ConstrainedSession:
         """
         spec = self._evaluator_for_turn(evaluator)
         incoming = evaluator_identity(spec)
-        if incoming != self._governing_evaluator_id:
+        incoming_impl = evaluator_impl_fingerprint(spec)
+        if incoming != self._governing_evaluator_id or incoming_impl != self._governing_evaluator_impl:
             raise ConstraintExecutionError(
-                f"Evaluator identity {incoming!r} disagrees with session evaluator "
-                f"{self._governing_evaluator_id!r}; refusing substitution. "
-                "Evaluator interchange is not part of this runtime. No state written."
+                f"Evaluator identity {incoming!r} ({incoming_impl}) disagrees with session "
+                f"evaluator {self._governing_evaluator_id!r} ({self._governing_evaluator_impl}); "
+                "refusing substitution. Session-level evaluator swap is not permitted. "
+                "No state written."
             )
 
     def _assert_report_evaluator(self, report: DecisionReport) -> None:
@@ -798,6 +855,38 @@ class ConstrainedSession:
             card=turn.card(),
             trusted_output=turn.trusted_output,
         )
+
+
+def _restore_evaluator_impl(raw: object, *, evaluator_id: str) -> str:
+    """Restore the session implementation fingerprint without silent migrate.
+
+    Old snapshots that omit ``evaluator_impl`` remain loadable only when the
+    recorded evaluator is the packaged frozen id. Custom snapshots must
+    carry the fingerprint; missing it fails closed.
+    """
+    if raw is None:
+        if evaluator_id == FROZEN_EVALUATOR_ID:
+            return FROZEN_EVALUATOR_IMPL
+        raise ConstraintExecutionError(
+            "SessionState missing evaluator_impl for a non-frozen evaluator; "
+            "refusing silent migrate of custom evaluator snapshots"
+        )
+    if not isinstance(raw, str):
+        raise ConstraintExecutionError("evaluator_impl must be a string")
+    impl = raw.strip()
+    if not impl:
+        raise ConstraintExecutionError("evaluator_impl must be non-empty")
+    if evaluator_id == FROZEN_EVALUATOR_ID and impl != FROZEN_EVALUATOR_IMPL:
+        raise ConstraintExecutionError(
+            f"Frozen evaluator snapshot implementation {impl!r} is not "
+            f"{FROZEN_EVALUATOR_IMPL!r}; refusing restore"
+        )
+    if evaluator_id != FROZEN_EVALUATOR_ID and not impl.startswith("custom:"):
+        raise ConstraintExecutionError(
+            f"Custom evaluator snapshot implementation {impl!r} is not a "
+            "custom class fingerprint; refusing restore"
+        )
+    return impl
 
 
 def _assert_turn_policy_identity(turn: SessionTurn, expected: SessionPolicyIdentity) -> None:

@@ -1,6 +1,6 @@
 # ai4-constrain
 
-Public product runtime for **`ai4.constrain`** (**v0.3.0**): a constrained-generation library that productizes the frozen **condition-D** architecture (five shard rubrics, per-shard scores, arbitration, at most two revision rounds), plus **`ConstrainedSession`** for persistent constrained state across turns, with a **proposal-provider policy wall** so backends emit candidate text and do not govern.
+Public product runtime for **`ai4.constrain`** (**v0.4.0**): a constrained-generation library that productizes the frozen **condition-D** architecture (five shard rubrics, per-shard scores, arbitration, at most two revision rounds), plus **`ConstrainedSession`** for persistent constrained state across turns, with a **proposal-provider policy wall** so backends emit candidate text and do not govern, and an **evaluator policy wall** so judges score and do not set policy.
 
 This repository is **not** the live Telegram bot (`@AI4DemoBot`) and is **not** a Vultr or other host deploy tree. It does not ship production credentials, bot tokens, or deployment wiring.
 
@@ -8,7 +8,20 @@ This repository is **not** the live Telegram bot (`@AI4DemoBot`) and is **not** 
 
 **Stage 2D did not establish D as superior to C.** Productizing condition-D is an architectural/research choice, not an experimental win. The frozen evidence classification remains **`null_retained_D_adds_cost`** (D adds cost without retained superiority over C). Sealed Stage 2D fixtures, gold notes, unblind keys, and held-out packs remain private and are **not** included in this export.
 
-## What is new in v0.3.0
+## What is new in v0.4.0
+
+- **Evaluator policy wall:** evaluator implementations may be substituted behind one frozen v0.1 scoring/control contract; they cannot set packaged rubrics, `REQUIRED_IDS`, kinds, priorities, thresholds, conflicts, pass/fail derivation, arbitration, D bounds, or refusal semantics
+- Packaged-policy authority: product-owned policy is loaded from packaged v0.1 YAML; middleware and arbitration never read `evaluator.rubrics`
+- Score overlay: every evaluation is overlaid before middleware; scores must be finite `[0, 1]` reals; missing or extra shards fail closed
+- Evaluator provenance on `DecisionReport` (`evaluator_id`, `evaluator_version`, `resolved_as`) is auditable and **not** governing policy
+- Session impl binding: a session is bound to one evaluator implementation (`backend_id` plus a stable class fingerprint for custom objects); per-turn swap fails closed
+- Reserved evaluator-id protections: `backend_id="v0.1-regex"` is reserved for the packaged frozen implementation; policy/control vocabulary ids fail closed
+- Notes and criterion evidence are untrusted revision feedback and report text, not policy authority
+- Report provenance consistency for old reports without an `evaluator` block (loadable from `versions`)
+
+**Evaluator implementation interchange does not demonstrate alignment persistence or correctness across judges.** A compliant custom evaluator may change scores and the resulting accept/revise/refuse outcome. It must not change packaged policy. Frozen Stage 2D evidence remains **`null_retained_D_adds_cost`**.
+
+## What was new in v0.3.0
 
 - **Proposal-provider policy wall:** proposal backends emit candidate text; they do not set evaluator identity, rubric set, thresholds, arbitration, enforced shards, refusal semantics, or `SessionPolicyIdentity`
 - Auditable `DecisionReport.proposal` block (`provider_id`, `model`, `resolved_as`) is **not** governing policy and is **not** on `SessionPolicyIdentity` or `versions` policy stamps

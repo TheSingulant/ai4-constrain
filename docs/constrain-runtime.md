@@ -51,6 +51,11 @@ Stable JSON document (`schema_version` `0.1.0`) with:
   `explicit_argument`, `custom_object`, `evaluate_only`, or
   `legacy_telemetry` (schema 0.1.0 reports that only recorded provider/model
   on telemetry). Old reports without this block remain loadable.
+- `evaluator`: `{evaluator_id, evaluator_version, resolved_as}` — auditable
+  evaluator-implementation provenance, **not** governing policy.
+  `resolved_as` is `config`, `explicit_argument`, `custom_object`, or
+  `legacy_versions`. Old reports without this block remain loadable from
+  `versions`.
 
 Timeout or zero-budget before any candidate is **execution**, not a
 constraint refuse. In that case `decision` is `null` and
@@ -178,6 +183,58 @@ generation, network, or spend.
 `evaluate()` does not call a proposal backend. Its proposal identity is
 `provider_id=none`, `resolved_as=evaluate_only`.
 
+## Evaluator implementation policy wall
+
+Evaluators judge candidates. They do not define the policy they are
+judging against.
+
+This is Option A only: evaluator **implementation** interchange behind one
+frozen v0.1 scoring/control contract. There is no live/LLM judge, no second
+production evaluator, no rubric/threshold/arbitration interchange, and no
+session-level evaluator swap.
+
+**Evaluator implementation interchange does not demonstrate alignment persistence or correctness across judges.**
+Changing a compliant custom evaluator may change scores and the resulting
+accept/revise/refuse outcome. It must **not** change:
+
+- packaged v0.1 rubrics / `REQUIRED_IDS`
+- rubric versions, hard/soft kinds, priorities, thresholds, conflicts
+- pass/fail derivation
+- arbitration
+- D controller / revision bounds
+- refusal semantics
+- session policy identity fields other than the bound implementation id
+- `EVIDENCE_CLASS`
+
+Product-owned policy is loaded from packaged v0.1 YAML. Middleware and
+arbitration never read `evaluator.rubrics`. Before middleware, every
+evaluation is overlaid: scores are validated as finite `[0, 1]` reals;
+`version` / `kind` / `priority` / `threshold` are overwritten from the
+packaged rubric; `passed` is recomputed from score vs the frozen
+threshold. Exactly the five required shards must be present; missing or
+extra shards fail closed. `.rubrics` is unnecessary; if present and
+inconsistent with packaged policy, the call fails closed.
+
+`backend_id="v0.1-regex"` is reserved for the packaged frozen
+implementation. A custom object spoofing that id fails closed.
+`run()` and `evaluate()` share the same bind / identity / reserved-id /
+preflight / overlay wall. Custom evaluator `backend_id` values that collide
+with policy/control vocabulary (for example `arbitration`, `threshold`,
+`evaluator_id`, `evidence_class`) fail closed. Notes and criterion evidence
+are untrusted revision feedback and report text: they may appear in
+`provider.revise(...)` feedback, and they are **not** policy authority.
+They cannot alter rubrics, thresholds, pass/fail, arbitration, identities,
+session policy, or evidence class.
+
+A session is bound to one evaluator **implementation** (`backend_id` plus a
+stable class fingerprint for custom objects). Per-turn `evaluator=` that
+disagrees with the identity or class bound at construction/load fails closed
+and does not write state. Constructor/object split-brain is refused by
+recording the bound implementation id on `SessionPolicyIdentity` and the
+class fingerprint on `evaluator_impl`. Old snapshots that omit
+`evaluator_impl` remain loadable under the packaged frozen evaluator;
+custom snapshots missing that field fail closed (no silent migrate).
+
 ## Extension points
 
 Internal constructors live in `ai4.constrain.ext` and are not a substitute
@@ -188,23 +245,27 @@ for `run` / `evaluate`.
   authority on restore; persisted `redact` / `include_history` are
   validation metadata, not governing settings.
 
-Only evaluator `v0.1-regex` is shipped. Unknown evaluator ids still fail
-closed.
+Only evaluator string id `v0.1-regex` is shipped. Unknown evaluator
+string ids still fail closed. There is no public evaluator registry.
+Custom evaluator **objects** may be passed for implementation interchange
+behind the frozen contract; they cannot set policy.
 
 ## Fail-closed rules
 
 The runtime does not skip a required shard, swap in an unknown
-evaluator, or fall back to an unconstrained completion when a required
-step cannot run. Custom evaluators are preflighted and guarded so an
-incomplete score cannot enter the D loop. Governing evaluator identity
-is validated on `run()` before any proposal `complete()` / `revise()`.
-Unknown proposal-provider strings fail closed. A session revalidates the
-evaluator object about to be used against the identity bound at
-construction/load and fails closed without writing state. Evaluator
-interchange is not part of this runtime.
+evaluator string id, or fall back to an unconstrained completion when a
+required step cannot run. Custom evaluators are bound, identity-checked,
+reserved-id-checked, preflighted, and overlaid so an incomplete or
+policy-mutating score cannot enter the D loop. Governing evaluator
+identity is validated on `run()` and `evaluate()` before any proposal
+`complete()` / `revise()`. Unknown proposal-provider strings fail closed.
+A session revalidates the evaluator object about to be used against the
+identity bound at construction/load and fails closed without writing
+state. Session-level evaluator swap is not permitted.
 
 ## What this does not change
 
 YAML rubrics, `src/shards/*`, arbitration, middleware, the D controller,
 Stage 2C/2D fixtures, hashes, reports, and preserved results stay the
-frozen v0.1 behavior.
+frozen v0.1 behavior. Evaluator implementation interchange does not
+retune those artifacts.

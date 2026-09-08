@@ -315,7 +315,10 @@ def test_unknown_schema_and_incompatible_identity_fail_closed(tmp_path):
     payload["schema_version"] = SESSION_SCHEMA_VERSION
     payload["policy_identity"]["evaluator_id"] = "llm-judge-v2"
     _write_snapshot(path, payload)
-    with pytest.raises(ConstraintExecutionError, match="policy/runtime identity"):
+    with pytest.raises(
+        ConstraintExecutionError,
+        match="policy/runtime identity|evaluator_impl|custom class fingerprint",
+    ):
         ConstrainedSession(session_id="ident-1", store=store)
 
     payload["policy_identity"]["evaluator_id"] = "v0.1-regex"

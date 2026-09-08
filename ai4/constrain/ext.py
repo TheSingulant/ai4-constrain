@@ -19,6 +19,12 @@ from src.shards.shard_evaluator import ShardEvaluator
 from src.shards.shard_loader import REQUIRED_IDS
 
 from ai4.constrain.errors import ConstraintExecutionError
+from ai4.constrain.evaluator_wall import (
+    assert_evaluator_rubrics,
+    assert_rubrics_match_packaged,
+    overlay_packaged_policy,
+    packaged_policy_rubrics,
+)
 from ai4.constrain.rubrics import load_packaged_rubrics
 
 FROZEN_EVALUATOR_ID = "v0.1-regex"
@@ -33,6 +39,10 @@ PROPOSAL_RESOLVED_AS_CONFIG = "config"
 PROPOSAL_RESOLVED_AS_ARGUMENT = "explicit_argument"
 PROPOSAL_RESOLVED_AS_CUSTOM = "custom_object"
 PROPOSAL_RESOLVED_AS_EVALUATE = "evaluate_only"
+EVALUATOR_RESOLVED_AS_CONFIG = "config"
+EVALUATOR_RESOLVED_AS_ARGUMENT = "explicit_argument"
+EVALUATOR_RESOLVED_AS_CUSTOM = "custom_object"
+EVALUATOR_RESOLVED_AS_LEGACY = "legacy_versions"
 
 SECRET_METADATA_KEYS = frozenset(
     {
@@ -108,16 +118,32 @@ RESERVED_PROVIDER_IDENTITIES = frozenset(
         "v0.1",
     }
 )
+# Custom evaluator backend_id values that collide with policy/control
+# vocabulary. The packaged frozen impl may still use FROZEN_EVALUATOR_ID.
+RESERVED_EVALUATOR_IDENTITIES = frozenset(
+    {
+        *RESERVED_PROVIDER_IDENTITIES,
+        *KNOWN_PROVIDER_IDS,
+        "evaluator_impl",
+        "implementation",
+        "proposal",
+    }
+)
+FROZEN_EVALUATOR_IMPL = f"frozen:{FROZEN_EVALUATOR_ID}"
 
 ProviderBackend = LLMProvider
 
 
 class EvaluatorBackend(Protocol):
-    """Score text. Implementations must fail closed, not skip shards."""
+    """Score text against the frozen v0.1 contract.
+
+    Implementations must fail closed, not skip shards. They do not own
+    rubrics, thresholds, kinds, priorities, conflicts, or pass/fail.
+    ``rubrics`` is optional; if present it must match packaged policy.
+    """
 
     backend_id: str
     version: str
-    rubrics: tuple
 
     def evaluate(self, text: str) -> Evaluation:
         """Return a complete per-shard evaluation or raise."""
@@ -134,14 +160,16 @@ class SessionStore(Protocol):
 
 
 def assert_complete_evaluation(evaluation: Evaluation | None) -> Evaluation:
-    """Fail closed if a required v0.1 shard was not scored."""
+    """Fail closed unless exactly the required v0.1 shards were scored."""
     if evaluation is None:
         raise ConstraintExecutionError("Required evaluator returned no evaluation")
-    present = set(evaluation.by_id())
-    missing = [item for item in REQUIRED_SHARD_IDS if item not in present]
-    if missing:
+    present = [item.shard_id for item in evaluation.shard_scores]
+    unique = set(present)
+    extra = sorted(unique - set(REQUIRED_SHARD_IDS))
+    missing = [item for item in REQUIRED_SHARD_IDS if item not in unique]
+    if missing or extra or len(present) != len(REQUIRED_SHARD_IDS) or len(unique) != len(REQUIRED_SHARD_IDS):
         raise ConstraintExecutionError(
-            f"Required constraint evaluator(s) did not execute: {missing}"
+            f"Required constraint evaluator(s) did not execute: missing={missing}, extra={extra}"
         )
     return evaluation
 
@@ -154,15 +182,17 @@ class FrozenV01RegexEvaluator:
 
     def __init__(self, rubrics=None) -> None:
         try:
-            loaded = tuple(rubrics) if rubrics is not None else load_packaged_rubrics()
-            self._inner = ShardEvaluator(loaded)
+            packaged = load_packaged_rubrics()
+            if rubrics is not None:
+                assert_rubrics_match_packaged(tuple(rubrics), packaged)
+            self._inner = ShardEvaluator(packaged)
         except ConstraintExecutionError:
             raise
         except Exception as exc:
             raise ConstraintExecutionError(
                 f"Failed to construct frozen {FROZEN_EVALUATOR_ID} evaluator: {exc}"
             ) from exc
-        self.rubrics = self._inner.rubrics
+        self.rubrics = packaged
         loaded_ids = {item.id for item in self.rubrics}
         missing = [item for item in REQUIRED_SHARD_IDS if item not in loaded_ids]
         if missing:
@@ -183,13 +213,26 @@ class FrozenV01RegexEvaluator:
 
 
 class GuardedEvaluator:
-    """Reject incomplete custom evaluations before they reach the D loop."""
+    """Reject incomplete or policy-mutating evaluations before the D loop.
 
-    def __init__(self, inner: EvaluatorBackend) -> None:
+    Middleware always sees packaged v0.1 rubrics. Evaluator-supplied
+    version/kind/priority/threshold/passed are overwritten. ``.rubrics`` on
+    this wrapper is the packaged set, never the inner backend's.
+    """
+
+    def __init__(
+        self,
+        inner: EvaluatorBackend,
+        *,
+        resolved_as: str = EVALUATOR_RESOLVED_AS_CUSTOM,
+    ) -> None:
         self._inner = inner
         self.backend_id = evaluator_identity(inner)
-        self.version = str(getattr(inner, "version", ""))
-        self.rubrics = getattr(inner, "rubrics", ()) or ()
+        self.version = str(getattr(inner, "version", "") or "")
+        self.resolved_as = resolved_as
+        self.rubrics = packaged_policy_rubrics()
+        assert_reserved_evaluator_identity(inner)
+        assert_evaluator_rubrics(inner, self.rubrics)
         self.calls: list[Evaluation] = []
 
     def evaluate(self, text: str) -> Evaluation:
@@ -199,9 +242,11 @@ class GuardedEvaluator:
             raise
         except Exception as exc:
             raise ConstraintExecutionError(f"Required evaluator failed to execute: {exc}") from exc
+        assert_evaluator_rubrics(self._inner, self.rubrics)
         complete = assert_complete_evaluation(evaluation)
-        self.calls.append(complete)
-        return complete
+        overlaid = overlay_packaged_policy(complete, self.rubrics)
+        self.calls.append(overlaid)
+        return overlaid
 
 
 def preflight_evaluator(backend: EvaluatorBackend) -> None:
@@ -254,25 +299,101 @@ def evaluator_identity(evaluator: str | EvaluatorBackend | None) -> str:
     return ident
 
 
+def unwrap_evaluator(evaluator: object) -> object:
+    """Return the innermost evaluator backend, skipping GuardedEvaluator wraps."""
+    current = evaluator
+    seen: set[int] = set()
+    while isinstance(current, GuardedEvaluator):
+        ident = id(current)
+        if ident in seen:
+            raise ConstraintExecutionError("Cyclic evaluator wrapper; refusing")
+        seen.add(ident)
+        current = current._inner
+    return current
+
+
+def assert_reserved_evaluator_identity(evaluator: object) -> None:
+    """Reject spoofed frozen ids and policy/control vocabulary as custom ids."""
+    ident = evaluator_identity(evaluator)
+    inner = unwrap_evaluator(evaluator)
+    if ident == FROZEN_EVALUATOR_ID:
+        if type(inner) is not FrozenV01RegexEvaluator:
+            raise ConstraintExecutionError(
+                f"Reserved evaluator identity {FROZEN_EVALUATOR_ID!r} is only valid "
+                "for the packaged frozen implementation; refusing spoofed backend_id"
+            )
+        return
+    folded = ident.strip().lower()
+    reserved = {item.lower() for item in RESERVED_EVALUATOR_IDENTITIES}
+    if folded in reserved:
+        raise ConstraintExecutionError(
+            f"Evaluator identity {ident!r} collides with evaluator or "
+            "policy/control identity; refusing custom backend_id that is not "
+            "an implementation name"
+        )
+
+
+def evaluator_impl_fingerprint(evaluator: str | EvaluatorBackend | None) -> str:
+    """Stable implementation fingerprint. Not a cryptographic attestation.
+
+    The packaged frozen evaluator is always ``frozen:v0.1-regex``. Custom
+    objects are ``custom:<module>.<qualname>`` of the unwrapped class so
+    same-id / different-class swaps fail closed. This is not a public
+    registry.
+    """
+    if evaluator is None or isinstance(evaluator, str):
+        ident = evaluator_identity(evaluator)
+        if ident != FROZEN_EVALUATOR_ID:
+            raise ConstraintExecutionError(
+                f"Unknown evaluator {ident!r}. Registered: {KNOWN_EVALUATOR_IDS}"
+            )
+        return FROZEN_EVALUATOR_IMPL
+    inner = unwrap_evaluator(evaluator)
+    if type(inner) is FrozenV01RegexEvaluator:
+        return FROZEN_EVALUATOR_IMPL
+    cls = type(inner)
+    module = str(getattr(cls, "__module__", "") or "").strip()
+    qual = str(getattr(cls, "__qualname__", "") or getattr(cls, "__name__", "") or "").strip()
+    if not module or not qual:
+        raise ConstraintExecutionError(
+            "Custom evaluator must expose a class module and qualname for "
+            "session implementation binding"
+        )
+    return f"custom:{module}.{qual}"
+
+
+def evaluator_resolved_as(evaluator: str | EvaluatorBackend | None) -> str:
+    if evaluator is None:
+        return EVALUATOR_RESOLVED_AS_CONFIG
+    if isinstance(evaluator, str):
+        return EVALUATOR_RESOLVED_AS_ARGUMENT
+    return EVALUATOR_RESOLVED_AS_CUSTOM
+
+
 def bind_evaluator(
     evaluator: str | EvaluatorBackend | None = None,
     *,
     rubric_set: str = FROZEN_RUBRIC_SET,
+    resolved_as: str | None = None,
 ) -> GuardedEvaluator:
-    """Resolve, identity-check, and preflight before any proposal generation."""
+    """Resolve, identity-check, reserved-id-check, and preflight before proposals."""
     ident = evaluator_identity(evaluator)
+    source = resolved_as if resolved_as is not None else evaluator_resolved_as(evaluator)
     if isinstance(evaluator, str) or evaluator is None:
         if ident not in KNOWN_EVALUATOR_IDS:
             raise ConstraintExecutionError(
                 f"Unknown evaluator {ident!r}. Registered: {KNOWN_EVALUATOR_IDS}"
             )
     resolved = resolve_evaluator(evaluator, rubric_set=rubric_set)
-    backend = GuardedEvaluator(resolved)
+    assert_reserved_evaluator_identity(resolved)
+    backend = GuardedEvaluator(resolved, resolved_as=source)
     bound = evaluator_identity(backend)
     if bound != ident:
         raise ConstraintExecutionError(
             f"Evaluator identity {bound!r} does not match resolved identity {ident!r}"
         )
+    if ident == FROZEN_EVALUATOR_ID:
+        assert_reserved_evaluator_identity(backend)
     preflight_evaluator(backend)
     return backend
 
@@ -525,8 +646,13 @@ __all__ = [
     "ALLOWED_COMPLETION_METADATA_KEYS",
     "Completion",
     "EVALUATE_ONLY_PROVIDER_ID",
+    "EVALUATOR_RESOLVED_AS_ARGUMENT",
+    "EVALUATOR_RESOLVED_AS_CONFIG",
+    "EVALUATOR_RESOLVED_AS_CUSTOM",
+    "EVALUATOR_RESOLVED_AS_LEGACY",
     "EvaluatorBackend",
     "FROZEN_EVALUATOR_ID",
+    "FROZEN_EVALUATOR_IMPL",
     "FROZEN_EVALUATOR_VERSION",
     "FROZEN_RUBRIC_SET",
     "FrozenV01RegexEvaluator",
@@ -543,13 +669,17 @@ __all__ = [
     "ProposalResolution",
     "ProviderBackend",
     "REQUIRED_SHARD_IDS",
+    "RESERVED_EVALUATOR_IDENTITIES",
     "RESERVED_PROVIDER_IDENTITIES",
     "SECRET_METADATA_KEYS",
     "SessionStore",
     "assert_complete_evaluation",
+    "assert_reserved_evaluator_identity",
     "bind_evaluator",
     "checked_completion",
     "evaluator_identity",
+    "evaluator_impl_fingerprint",
+    "evaluator_resolved_as",
     "is_live_provider",
     "preflight_evaluator",
     "reject_completion_metadata",
@@ -557,4 +687,5 @@ __all__ = [
     "resolve_proposal",
     "resolve_provider",
     "session_store",
+    "unwrap_evaluator",
 ]

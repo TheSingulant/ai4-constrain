@@ -38,6 +38,24 @@ Substitution is a control-loop audit property, not a claim that two
 proposal models are equivalently aligned. Stage 2D remains
 `null_retained_D_adds_cost`.
 
+A session is bound to one evaluator implementation. Unlike proposal
+providers, evaluators cannot be swapped between turns or across restore.
+`SessionPolicyIdentity.evaluator_id` is the identity bound at
+construction/load (the custom object's `backend_id` when an object is
+supplied), not a silent `RuntimeConfig` default that disagrees with the
+object. Custom sessions also bind a stable class fingerprint
+(`evaluator_impl`). Same `backend_id` with a different class fails closed.
+Per-turn `evaluator=` that disagrees fails closed with no state written.
+Old snapshots that omit `evaluator_impl` remain loadable under the packaged
+frozen evaluator; a custom snapshot missing that field fails closed (no
+silent migrate). This is not a public registry and not cryptographic
+attestation.
+
+**Evaluator implementation interchange does not demonstrate alignment persistence or correctness across judges.**
+A compliant custom evaluator may change scores and decisions. It cannot
+change packaged policy. This is still not a claim that D beat C; Stage 2D
+remains `null_retained_D_adds_cost`.
+
 `last_output` is **trusted terminal assistant output**, not
 `DecisionReport.final_output`. A failing candidate, timeout, or
 budget-exhausted draft is stored on the report for audit and does not
@@ -121,6 +139,10 @@ A `FileSessionStore` snapshot records:
 - `policy_identity` (runtime/report/protocol/condition/evidence class,
   rubric set, evaluator id, arbitration) as **validation metadata**.
   This block does **not** include proposal provider or model.
+- `evaluator_impl` (frozen `v0.1-regex` fingerprint, or
+  `custom:<module>.<qualname>`) as **validation metadata**. Omitted on
+  old frozen snapshots (still loadable). Required for custom-evaluator
+  snapshots; missing it fails closed.
 - `include_history`, `max_history_turns`, `redact` as **validation
   metadata** from the writing process
 - `turns` (user prompt, composed prompt, DecisionReport audit including
@@ -131,6 +153,9 @@ On restore:
 
 - unknown or mismatched `schema_version` fails closed (no silent migrate)
 - missing/unknown/incompatible `policy_identity` fails closed
+- missing `evaluator_impl` on a custom-evaluator snapshot fails closed
+  (frozen snapshots that omit it still load)
+- incompatible `evaluator_impl` (same id, different class) fails closed
 - each turn's report versions must match the constructor identity
 - truncated or malformed JSON fails closed
 - persisted `redact=false` does **not** override caller `redact=true`
@@ -198,7 +223,10 @@ session fails closed.
   `complete()` / `evaluate_text()` against the identity bound at
   construction/load, even when no per-turn `evaluator=` argument is
   supplied. Mutating `backend_id` after bind cannot commit a mismatched
-  turn.
+  turn. Same `backend_id` with a different custom class fails closed.
+  Session-level evaluator swap is not permitted. Snapshot
+  `policy_identity.evaluator_id` is the bound implementation identity;
+  `evaluator_impl` is the bound class fingerprint.
 - Default redaction still applies wherever a `DecisionReport` is emitted,
   including after restore, because `redact` is constructor authority.
 - Persist failures roll back the in-memory turn so a later load cannot

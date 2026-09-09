@@ -1,6 +1,6 @@
 # ai4-constrain
 
-Public product runtime for **`ai4.constrain`** (**v0.4.0**): a constrained-generation library that productizes the frozen **condition-D** architecture (five shard rubrics, per-shard scores, arbitration, at most two revision rounds), plus **`ConstrainedSession`** for persistent constrained state across turns, with a **proposal-provider policy wall** so backends emit candidate text and do not govern, and an **evaluator policy wall** so judges score and do not set policy.
+Public product runtime for **`ai4.constrain`** (**v0.5.0**): a constrained-generation library that productizes the frozen **condition-D** architecture (five shard rubrics, per-shard scores, arbitration, at most two revision rounds), plus **`ConstrainedSession`** for persistent constrained state across turns, with a **proposal-provider policy wall** so backends emit candidate text and do not govern, an **evaluator policy wall** so judges score and do not set policy, and sibling **`ai4.identity`** for offline identity and provenance.
 
 This repository is **not** the live Telegram bot (`@AI4DemoBot`) and is **not** a Vultr or other host deploy tree. It does not ship production credentials, bot tokens, or deployment wiring.
 
@@ -8,7 +8,25 @@ This repository is **not** the live Telegram bot (`@AI4DemoBot`) and is **not** 
 
 **Stage 2D did not establish D as superior to C.** Productizing condition-D is an architectural/research choice, not an experimental win. The frozen evidence classification remains **`null_retained_D_adds_cost`** (D adds cost without retained superiority over C). Sealed Stage 2D fixtures, gold notes, unblind keys, and held-out packs remain private and are **not** included in this export.
 
-## What is new in v0.4.0
+## What is new in v0.5.0
+
+- **Sibling identity/provenance kernel (`ai4.identity`):** `AgentIdentity`, `AgentAttestation`, `NameRecordSnapshot`, `TrustContext`
+- Report binding/provenance (`bind_report` / `verify_report_binding`)
+- Ed25519 signing and verification; SHA-256 digests
+- Locked **`rfc8785==0.1.4`** canonicalization profile (`rfc8785-jcs`)
+- Rotation as privately reviewed: single controller; optional rotation attestation signed by the previous key; monotonic manifest versions; skip-version rotations abandon skipped versions
+- Current-trust vs historical-signature semantics (`verify_attestation` vs `verify_attestation_signature`)
+- Binding verdicts are provenance-only (`matched` / `unbound` / `mismatch` / `expired` / `untrusted_signer`) — never `accept` / `revise` / `refuse`
+
+`ai4.identity` remains a sibling kernel. `ai4.constrain` does **not** import `ai4.identity`. Identity does not enter `run()` / `evaluate()` / sessions and is not a provider, evaluator, or policy authority.
+
+Identity is not trust. Identity makes trust systems possible.
+
+A signed AI⁴ identity record binds claims and provenance to an agent identity; it does not prove the agent is aligned, safe, or correctly governed.
+
+See [`docs/identity.md`](docs/identity.md). Frozen Stage 2D evidence remains **`null_retained_D_adds_cost`**. Public v0.4 policy-wall behavior is unchanged.
+
+## What was new in v0.4.0
 
 - **Evaluator policy wall:** evaluator implementations may be substituted behind one frozen v0.1 scoring/control contract; they cannot set packaged rubrics, `REQUIRED_IDS`, kinds, priorities, thresholds, conflicts, pass/fail derivation, arbitration, D bounds, or refusal semantics
 - Packaged-policy authority: product-owned policy is loaded from packaged v0.1 YAML; middleware and arbitration never read `evaluator.rubrics`
@@ -63,6 +81,47 @@ print(turn.report.decision, session.last_output)
 
 report = run("Please give a brief, checkable outline of options and limits.")
 print(report.decision, report.final_output)
+```
+
+Identity / provenance (sibling kernel; not on the constrain execution path):
+
+```python
+from datetime import datetime, timedelta, timezone
+
+from ai4.constrain import evaluate
+from ai4.identity import (
+    AgentIdentity,
+    FixedClock,
+    TrustContext,
+    bind_report,
+    generate_ed25519_keypair,
+    sign_attestation,
+    verify_attestation,
+    verify_report_binding,
+)
+
+seed, public = generate_ed25519_keypair()
+now = datetime(2026, 9, 8, 12, 0, tzinfo=timezone.utc)
+identity = AgentIdentity.create(
+    identity_id="agent-alpha",
+    controller_public_key=public,
+    manifest_version=1,
+    issued_at=now,
+    expires_at=now + timedelta(hours=1),
+)
+report = evaluate("Here is a brief, checkable answer: I can outline options and limits.")
+attestation = sign_attestation(
+    identity,
+    seed,
+    issued_at=now,
+    expires_at=now + timedelta(minutes=30),
+    binding=bind_report(report),
+)
+verify_attestation(attestation, trust=TrustContext.from_identity(identity), clock=FixedClock(now))
+result = verify_report_binding(
+    attestation, report, trust=TrustContext.from_identity(identity), clock=FixedClock(now)
+)
+assert result.verdict == "matched"
 ```
 
 CLI:

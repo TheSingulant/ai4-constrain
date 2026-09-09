@@ -1,9 +1,11 @@
-"""Public export: lock scientific frozen bytes and v0.4 product files.
+"""Public export: lock scientific frozen bytes and v0.5 product files.
 
-Scientific/evaluator/D-controller bytes are unchanged from public v0.3.0.
-Product files api.py, report.py, ext.py, session.py, and evaluator_wall.py
-are the v0.4 evaluator-policy-wall port; runtime.py and privacy.py are
-unchanged and remain locked.
+Scientific/evaluator/D-controller bytes are unchanged from public v0.4.0.
+Constrain product files api.py, report.py, ext.py, session.py,
+evaluator_wall.py, runtime.py, and privacy.py are unchanged: identity is a
+sibling kernel and must not edit the governing constrain path.
+Identity kernel files are locked to private canonical source
+75a2ab55a4ece1c3be4e4ac163516aaa93bb2696.
 """
 
 from __future__ import annotations
@@ -36,6 +38,18 @@ FROZEN_SHA256 = {
     "ai4/constrain/evaluator_wall.py": "f146713893745d64b0cf823f2ac9c3fa10bcccf0400d493d80dc2bcb458e308d",
     "ai4/constrain/privacy.py": "87e9eaf077b84e60813ef3e1142c29e9e0d38ccc2e42fe0fca9ceb9fd46ecb58",
     "docs/protocol-v0.1.md": "e55a00f81701efa181eec65a9c67a94b077575796b850ad9eee47bea30c83ca7",
+    "ai4/identity/__init__.py": "9ef7a45e87ac1c208d236702d8cdc0bdf9d59011ff517ed0424e9c04d313c0e9",
+    "ai4/identity/attestation.py": "a12b1d7b1e17ea73b94d3a3122f1688847ee55af6050dc1ea6fec28786f29782",
+    "ai4/identity/binding.py": "949604596879ad07803e2d2d79802c50d30bfc53a0c61195b73077ccb621c7e1",
+    "ai4/identity/canonical.py": "b8ed16069bde39252da29c30f2d67787ddaa4257aa390eb0beaaf0a8a2d75579",
+    "ai4/identity/crypto.py": "69346acdf84b3763a59178741e8943ce3a5237f43668123bafc4bbdb0b0797ed",
+    "ai4/identity/digest.py": "3e1a0160cc7729c1d293fc4dabe42db7f707997398cd1fcf3e81c5a3a138c930",
+    "ai4/identity/errors.py": "70cf86d278f087899576243811b66a00f761ed48f426eeb876d2f0cf6e0ed045",
+    "ai4/identity/py.typed": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ai4/identity/schemas.py": "7a449ff0eb5ce1710408c40f3165d356af94d8e6c79d3166051ba9b107104b7b",
+    "ai4/identity/timeutil.py": "cb509b30e364fd5c8c0f1b1e6b4997a7bcebaabef369f3cd81a0058e22e17eb5",
+    "ai4/identity/trust.py": "bfa378007aaf1da8fa1ec477da5210b27da92f4ec4b41d4b1f9c7e69fe3621bf",
+    "docs/identity.md": "6af136443b4fdab43bea0f0199b76878144eab462c8837986a016698414f68ae",
 }
 
 

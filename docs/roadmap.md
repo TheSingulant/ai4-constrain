@@ -10,4 +10,8 @@ is allowed only behind the frozen v0.1 scoring/control contract
 evaluator. Evaluator implementation interchange does not demonstrate
 alignment persistence or correctness across judges.
 
+`ai4.identity` is a sibling offline identity/provenance kernel
+(`docs/identity.md`). It is not on the governing constrain path.
+Identity is not trust.
+
 Production Telegram work stays off this path. See `docs/protocol-v0.1.md`.

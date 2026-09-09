@@ -16,4 +16,10 @@ contract. They do not define policy. Evaluator implementation
 interchange does not demonstrate alignment persistence or correctness
 across judges.
 
+`ai4.identity` (`docs/identity.md`) is a sibling offline identity and
+provenance kernel. It is not imported by `run` / `evaluate` / session
+walls. A signed AI⁴ identity record binds claims and provenance to an
+agent identity; it does not prove the agent is aligned, safe, or
+correctly governed. Identity is not trust.
+
 This scaffold file is not an active design spec and does not describe production `@AI4DemoBot`.

@@ -12,6 +12,9 @@ alignment persistence or correctness across judges.
 
 `ai4.identity` is a sibling offline identity/provenance kernel
 (`docs/identity.md`). It is not on the governing constrain path.
-Identity is not trust.
+Identity is not trust. `.ai4` resolution is a discovery adapter
+(`docs/identity-resolution.md`), not kernel verification and not
+constraint-policy authority.
+
 
 Production Telegram work stays off this path. See `docs/protocol-v0.1.md`.

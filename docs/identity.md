@@ -193,6 +193,12 @@ object into `run(..., provider=...)` or `run(..., evaluator=...)` fails
 the existing provider/evaluator walls. A `.ai4` name snapshot cannot
 bind a session. A manifest URI cannot replace the local hash.
 
+Live `.ai4` lookup is a discovery sibling (`ai4.identity.resolve`,
+`docs/identity-resolution.md`). It is not this kernel. Resolution is
+not verification. Naming is not policy authority. `ai4.identity.__init__`
+does not export resolver types.
+
+
 ## Usage
 
 ```python

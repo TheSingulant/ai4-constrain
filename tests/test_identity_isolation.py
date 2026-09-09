@@ -33,6 +33,11 @@ IDENTITY_SMUGGLE_FIELDS = (
     "wallet",
     "token",
     "uns_domain",
+    "attestation_uri",
+    "attestation_sha256",
+    "resolver_id",
+    "discovery",
+    "freshness",
 )
 
 RUNTIME_FORBIDDEN_FIELDS = (
@@ -47,6 +52,9 @@ RUNTIME_FORBIDDEN_FIELDS = (
     "manifest_hash",
     "manifest_version",
     "identity_id",
+    "attestation_uri",
+    "resolver_id",
+    "discovery",
 )
 
 CONSTRAIN_ROOT = Path("ai4/constrain")
@@ -228,3 +236,123 @@ def test_provider_and_evaluator_wall_files_are_unchanged():
     assert "ai4.identity" not in evaluator
     assert "null_retained_D_adds_cost" in provider
     assert "null_retained_D_adds_cost" in evaluator
+
+
+KERNEL_NETWORK_MODULES = ("urllib", "http", "http.client", "http.server")
+KERNEL_FILES = (
+    Path("ai4/identity/__init__.py"),
+    Path("ai4/identity/attestation.py"),
+    Path("ai4/identity/binding.py"),
+    Path("ai4/identity/canonical.py"),
+    Path("ai4/identity/crypto.py"),
+    Path("ai4/identity/digest.py"),
+    Path("ai4/identity/errors.py"),
+    Path("ai4/identity/schemas.py"),
+    Path("ai4/identity/timeutil.py"),
+    Path("ai4/identity/trust.py"),
+)
+
+
+def _import_offenders(path: Path) -> list[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    offenders = []
+    for node in ast.walk(tree):
+        names: list[str] = []
+        if isinstance(node, ast.Import):
+            names = [alias.name for alias in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            names = [node.module or ""]
+        for name in names:
+            if name == "ai4.identity.resolve" or name.startswith("ai4.identity.resolve."):
+                offenders.append(f"{path}: import {name}")
+            if name in KERNEL_NETWORK_MODULES or name.startswith("urllib.") or name.startswith("http."):
+                offenders.append(f"{path}: import {name}")
+    return offenders
+
+
+def test_constrain_sources_do_not_import_resolve():
+    offenders = []
+    for path in CONSTRAIN_ROOT.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if "identity.resolve" in alias.name:
+                        offenders.append(f"{path}: import {alias.name}")
+            elif isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+                if "identity.resolve" in module:
+                    offenders.append(f"{path}: from {module}")
+    assert offenders == []
+
+
+def test_identity_kernel_modules_do_not_import_resolve_or_network():
+    offenders: list[str] = []
+    for path in KERNEL_FILES:
+        offenders.extend(_import_offenders(path))
+    assert offenders == []
+
+
+def test_identity_init_does_not_export_resolver_types():
+    import ai4.identity as kernel
+
+    for name in (
+        "DiscoveryRecord",
+        "FileResolver",
+        "MemoryResolver",
+        "Resolver",
+        "resolve_name",
+        "Freshness",
+        "LocalFileFetcher",
+    ):
+        assert name not in getattr(kernel, "__all__", ())
+        assert not hasattr(kernel, name)
+
+
+def test_python_m_ai4_run_remains_constrain():
+    import subprocess
+    import sys
+
+    help_result = subprocess.run(
+        [sys.executable, "-m", "ai4", "--help"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert help_result.returncode == 0, help_result.stderr
+    assert "ai4-constrain" in help_result.stdout or "constrained" in help_result.stdout.lower()
+    assert "Current trust" not in help_result.stdout
+
+    run_help = subprocess.run(
+        [sys.executable, "-m", "ai4", "run", "--help"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert run_help.returncode == 0, run_help.stderr
+    assert "Propose" in run_help.stdout or "prompt" in run_help.stdout.lower()
+
+
+def test_discovery_objects_cannot_be_used_as_provider_or_evaluator():
+    from ai4.identity.resolve.types import DiscoveryRecord, Freshness
+
+    discovery = DiscoveryRecord.from_dict(
+        {
+            "schema_id": "ai4.identity.discovery.v1",
+            "name": "researcher.ai4",
+            "identity_id": "agent-alpha",
+            "controller_public_key": "ab" * 32,
+            "manifest_sha256": "cd" * 32,
+            "attestation_sha256": "",
+            "attestation_uri": "researcher.ai4.attestation.json",
+            "captured_at": "2026-09-08T12:00:00Z",
+            "freshness": {"kind": "fixture", "age_s": 0, "max_age_s": None},
+            "resolver_id": "file",
+        }
+    )
+    with pytest.raises(ConstraintExecutionError):
+        run(CLEAN, provider=discovery)  # type: ignore[arg-type]
+    with pytest.raises(ConstraintExecutionError):
+        run(CLEAN, evaluator=discovery)  # type: ignore[arg-type]
+    with pytest.raises(ConstraintExecutionError):
+        evaluate(CLEAN_TEXT, evaluator=Freshness(kind="fixture", age_s=0))  # type: ignore[arg-type]

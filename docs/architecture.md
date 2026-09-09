@@ -22,4 +22,9 @@ walls. A signed AI⁴ identity record binds claims and provenance to an
 agent identity; it does not prove the agent is aligned, safe, or
 correctly governed. Identity is not trust.
 
+`.ai4` name lookup (`docs/identity-resolution.md`) is a discovery
+adapter outside the kernel. Resolution is not verification. Naming is
+not policy authority.
+
+
 This scaffold file is not an active design spec and does not describe production `@AI4DemoBot`.

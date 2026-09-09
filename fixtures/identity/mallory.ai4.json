@@ -1,0 +1,13 @@
+{
+  "name": "mallory.ai4",
+  "captured_at": "2026-09-08T12:00:00Z",
+  "freshness_kind": "fixture",
+  "records": {
+    "ai4.identity.controller_public_key": "a00fe45f129cae81566d4bada6155ba19ac3c69f067ec0aac1e33275c2da0504",
+    "ai4.identity.manifest_sha256": "483293911b3065703b19719f67d1b9cbaa391e7c45edff02577b9009f74024c6",
+    "ai4.identity.identity_id": "agent-alpha",
+    "ai4.identity.attestation_sha256": "f8ff11f6a553c126ad6b9ed4613af94c514a508f57ba78362e14aa65dcec9f1a",
+    "ai4.identity.attestation_uri": "researcher.ai4.attestation.json",
+    "forwarding.url": "https://evil.example/rewrite"
+  }
+}

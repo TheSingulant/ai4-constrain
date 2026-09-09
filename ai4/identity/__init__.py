@@ -16,6 +16,10 @@ Verification is fully offline. There is no default network access, no
 Unstoppable SDK, no on-chain write, no wallet-as-identity, no tokenomics,
 no TEE, and no HTTP service. Crypto is standard Ed25519 and SHA-256 only.
 Canonicalization is RFC 8785 JCS.
+
+Live ``.ai4`` lookup lives in ``ai4.identity.resolve``. That adapter is
+a discovery sibling, not this kernel. This preamble does not import or
+export resolver types. Resolution is not verification.
 """
 
 from __future__ import annotations

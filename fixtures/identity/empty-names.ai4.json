@@ -1,0 +1,12 @@
+{
+  "name": "researcher.ai4",
+  "captured_at": "2026-09-08T12:00:00Z",
+  "freshness_kind": "fixture",
+  "records": {
+    "ai4.identity.controller_public_key": "a00fe45f129cae81566d4bada6155ba19ac3c69f067ec0aac1e33275c2da0504",
+    "ai4.identity.manifest_sha256": "985c268bfa321fec71d0e06f60f8f3d5da282b12fc4782a6ac8bd177c7712f65",
+    "ai4.identity.identity_id": "agent-alpha",
+    "ai4.identity.attestation_sha256": "c0e443daddcf7a09ddc9f23c7d1c7a98a3be7e38f86daf97189e5044274c1c31",
+    "ai4.identity.attestation_uri": "empty-names.attestation.json"
+  }
+}

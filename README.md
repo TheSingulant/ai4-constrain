@@ -1,6 +1,6 @@
 # ai4-constrain
 
-Public product runtime for **`ai4.constrain`** (**v0.5.0**): a constrained-generation library that productizes the frozen **condition-D** architecture (five shard rubrics, per-shard scores, arbitration, at most two revision rounds), plus **`ConstrainedSession`** for persistent constrained state across turns, with a **proposal-provider policy wall** so backends emit candidate text and do not govern, an **evaluator policy wall** so judges score and do not set policy, and sibling **`ai4.identity`** for offline identity and provenance.
+Public product runtime for **`ai4.constrain`** (**v0.6.0**): a constrained-generation library that productizes the frozen **condition-D** architecture (five shard rubrics, per-shard scores, arbitration, at most two revision rounds), plus **`ConstrainedSession`** for persistent constrained state across turns, with a **proposal-provider policy wall** so backends emit candidate text and do not govern, an **evaluator policy wall** so judges score and do not set policy, sibling **`ai4.identity`** for offline identity and provenance, and an offline **`.ai4` discovery adapter** (`FileResolver` only).
 
 This repository is **not** the live Telegram bot (`@AI4DemoBot`) and is **not** a Vultr or other host deploy tree. It does not ship production credentials, bot tokens, or deployment wiring.
 
@@ -8,7 +8,25 @@ This repository is **not** the live Telegram bot (`@AI4DemoBot`) and is **not** 
 
 **Stage 2D did not establish D as superior to C.** Productizing condition-D is an architectural/research choice, not an experimental win. The frozen evidence classification remains **`null_retained_D_adds_cost`** (D adds cost without retained superiority over C). Sealed Stage 2D fixtures, gold notes, unblind keys, and held-out packs remain private and are **not** included in this export.
 
-## What is new in v0.5.0
+## What is new in v0.6.0
+
+- **Offline `.ai4` discovery/resolution adapter (`ai4.identity.resolve`):** `DiscoveryRecord`, `Resolver`, `FileResolver`, local fetch pipeline, `.ai4` name normalization, hash-bound attestation discovery, and signed `name_records` cross-name protection
+- Sibling CLI: `python -m ai4.identity resolve` / `verify` (not the constrain CLI)
+- Five independent verification statuses: NAME RESOLVED, MANIFEST INTEGRITY VERIFIED, SIGNATURE VALID, CURRENT TRUST MATCHED, REPORT BINDING MATCHED
+- Filesystem containment for directory lookup; FileResolver freshness is always `fixture` (local JSON cannot claim live)
+- Docs: [`docs/identity-resolution.md`](docs/identity-resolution.md)
+
+**Release claim:** Resolve an external `.ai4` identity into hash-bound provenance inputs for the existing identity kernel, without allowing the naming layer to become verification, current trust, or constraint-policy authority.
+
+This slice ships `FileResolver` and offline fixtures only. It does not enable live Unstoppable REST, an Unstoppable SDK, web3, or default network lookup.
+
+Identity is not trust. Resolution is not verification. Naming is not policy authority. `ai4.identity.resolve` remains a discovery sibling. `ai4.constrain` does **not** import identity or resolve. The identity kernel does not import resolve.
+
+A signed AI⁴ identity record binds claims and provenance to an agent identity; it does not prove the agent is aligned, safe, or correctly governed.
+
+See [`docs/identity-resolution.md`](docs/identity-resolution.md). Frozen Stage 2D evidence remains **`null_retained_D_adds_cost`**. Public v0.5 identity-kernel verification contracts are unchanged.
+
+## What was new in v0.5.0
 
 - **Sibling identity/provenance kernel (`ai4.identity`):** `AgentIdentity`, `AgentAttestation`, `NameRecordSnapshot`, `TrustContext`
 - Report binding/provenance (`bind_report` / `verify_report_binding`)
@@ -122,6 +140,14 @@ result = verify_report_binding(
     attestation, report, trust=TrustContext.from_identity(identity), clock=FixedClock(now)
 )
 assert result.verdict == "matched"
+```
+
+Offline `.ai4` discovery (FileResolver fixtures; not live Unstoppable):
+
+```bash
+python -m ai4.identity resolve researcher.ai4 --resolver file --records fixtures/identity/researcher.ai4.json
+python -m ai4.identity verify researcher.ai4 --resolver file --records fixtures/identity/researcher.ai4.json \
+    --trust fixtures/identity/researcher.ai4.trust.json --report fixtures/identity/researcher.ai4.report.json
 ```
 
 CLI:

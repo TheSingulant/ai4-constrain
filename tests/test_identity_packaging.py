@@ -75,3 +75,44 @@ print("identity-installed-ok", identity.manifest_hash())
     )
     assert result.returncode == 0, result.stderr + result.stdout
     assert "identity-installed-ok" in result.stdout
+
+
+def test_clean_wheel_kernel_does_not_export_resolve_and_resolve_has_no_uns(tmp_path: Path):
+    wheel = _build_wheel(tmp_path / "dist")
+    site = tmp_path / "site"
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "--quiet", "--target", str(site), str(wheel)],
+        check=True,
+    )
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(site)
+    work = tmp_path / "work"
+    work.mkdir()
+    probe = r"""
+import os
+from pathlib import Path
+os.chdir(Path(%r))
+assert not Path("ai4").exists()
+import ai4.identity as kernel
+assert not hasattr(kernel, "DiscoveryRecord")
+assert not hasattr(kernel, "FileResolver")
+assert "DiscoveryRecord" not in kernel.__all__
+from ai4.identity.resolve import FileResolver, DiscoveryRecord, normalize_ai4_name
+normalize_ai4_name("researcher.ai4")
+import ai4.identity.resolve as resolve_pkg
+from pathlib import Path as P
+text = P(resolve_pkg.__file__).with_name("pipeline.py").read_text(encoding="utf-8")
+assert "web3" not in text
+assert "unstoppabledomains" not in text.lower()
+print("resolve-optional-ok")
+""" % str(work)
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=str(work),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert "resolve-optional-ok" in result.stdout

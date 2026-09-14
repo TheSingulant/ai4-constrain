@@ -14,7 +14,12 @@ from ai4.constrain.report import DecisionReport
 from ai4.constrain.runtime import EVIDENCE_CLASS
 from ai4.constrain.session import ConstrainedSession
 
-__version__ = "0.1.0"
+try:
+    from importlib.metadata import version as _pkg_version
+
+    __version__ = _pkg_version("ai4-constrain")
+except Exception:  # PackageNotFoundError / editable edge cases
+    __version__ = "0.7.0"
 
 __all__ = [
     "ConstrainedSession",

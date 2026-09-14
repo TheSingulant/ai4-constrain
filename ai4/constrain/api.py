@@ -444,6 +444,19 @@ def run(
     if redact is not None:
         cfg = replace(cfg, redact=redact)
     specified = _validate_specified(prompt_specified_shards)
+    from ai4.constrain._v07_3c.entry import execute_configured
+
+    configured_report = execute_configured(
+        prompt=prompt,
+        proposal=proposal,
+        provider=provider,
+        evaluator=evaluator,
+        cfg=cfg,
+        specified=specified,
+        prompt_id=prompt_id,
+    )
+    if configured_report is not None:
+        return configured_report
     if (
         provider is not None
         and evaluator is not None

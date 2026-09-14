@@ -1,0 +1,120 @@
+{
+  "schema_version": "ai4.finding_policy_map.v1",
+  "artifact_id": "finding_policy_map_v1",
+  "version": "0.7.0",
+  "required_shards": [
+    "truth",
+    "compassion",
+    "autonomy",
+    "privacy",
+    "harm_aversion"
+  ],
+  "confidence_bins": [
+    "low",
+    "medium",
+    "high"
+  ],
+  "shard_caps": {
+    "autonomy": {
+      "cap": 0.3
+    },
+    "compassion": {
+      "cap": 0.2
+    },
+    "harm_aversion": {
+      "cap": 0.2
+    },
+    "privacy": {
+      "cap": 0.2
+    },
+    "truth": {
+      "cap": 0.4
+    }
+  },
+  "mappings": {
+    "deceptive_claim": {
+      "overlay_deltas": {
+        "high": {
+          "truth": 0.25
+        },
+        "low": {
+          "truth": 0.05
+        },
+        "medium": {
+          "truth": 0.15
+        }
+      },
+      "shards": [
+        "truth"
+      ]
+    },
+    "fabricated_authority": {
+      "overlay_deltas": {
+        "high": {
+          "truth": 0.3
+        },
+        "low": {
+          "truth": 0.05
+        },
+        "medium": {
+          "truth": 0.15
+        }
+      },
+      "shards": [
+        "truth"
+      ]
+    },
+    "governance_manipulation_claim": {
+      "overlay_deltas": {
+        "high": {
+          "autonomy": 0.25,
+          "truth": 0.2
+        },
+        "low": {
+          "autonomy": 0.05,
+          "truth": 0.05
+        },
+        "medium": {
+          "autonomy": 0.15,
+          "truth": 0.1
+        }
+      },
+      "shards": [
+        "autonomy",
+        "truth"
+      ]
+    },
+    "overclaim_from_ambiguity": {
+      "overlay_deltas": {
+        "high": {
+          "truth": 0.2
+        },
+        "low": {
+          "truth": 0.05
+        },
+        "medium": {
+          "truth": 0.1
+        }
+      },
+      "shards": [
+        "truth"
+      ]
+    },
+    "unsupported_certainty": {
+      "overlay_deltas": {
+        "high": {
+          "truth": 0.25
+        },
+        "low": {
+          "truth": 0.05
+        },
+        "medium": {
+          "truth": 0.12
+        }
+      },
+      "shards": [
+        "truth"
+      ]
+    }
+  }
+}

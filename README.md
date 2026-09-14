@@ -1,5 +1,8 @@
 # ai4-constrain
 
+[![PyPI version](https://img.shields.io/pypi/v/ai4-constrain.svg)](https://pypi.org/project/ai4-constrain/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/ai4-constrain.svg)](https://pypi.org/project/ai4-constrain/)
+
 **Constrained authority for increasingly capable AI systems.**
 
 AI⁴ (`The Singulant`) ships `ai4.constrain`: a Python runtime that evaluates candidate text under frozen shard rubrics and returns a structured `DecisionReport` (`accept` / `revise` / `refuse` / constrained outcomes). Controls fail closed. Identity is a sibling provenance kernel, not trust and not policy authority.
@@ -38,11 +41,17 @@ Optional **v0.7 hybrid path**: when a validated `GoverningIntegration` is set on
 
 Evaluator implementation interchange does not demonstrate alignment persistence or correctness across judges.
 
-## Install / quickstart
+## Install
 
 ```bash
-python3 -m pip install -e ".[dev]"
+pip install ai4-constrain
 ```
+
+Package on PyPI: https://pypi.org/project/ai4-constrain/
+
+Current public release: **0.7.0**.
+
+## Quickstart
 
 ```python
 from ai4.constrain import ConstrainedSession, run, evaluate
@@ -63,6 +72,19 @@ Optional hybrid surface (default OFF; requires a caller-built `GoverningIntegrat
 from ai4.constrain import GoverningIntegration, GOVERNING_INTEGRATION_VERSION
 # Construct only with product-owned config; validate() fails closed on bad pins.
 ```
+
+## Development (contributors)
+
+For local development from a clone:
+
+```bash
+git clone https://github.com/TheSingulant/ai4-constrain
+cd ai4-constrain
+python3 -m pip install -e ".[dev]"
+python3 -m pytest
+```
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full workflow.
 
 ## Examples and tests
 

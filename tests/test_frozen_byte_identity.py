@@ -1,14 +1,14 @@
-"""Public export: lock scientific frozen bytes and v0.6 product files.
+"""Public export: lock scientific frozen bytes and v0.7 product files.
 
 Scientific/evaluator/D-controller bytes are unchanged from public v0.4.0.
-Constrain product files api.py, report.py, ext.py, session.py,
-evaluator_wall.py, runtime.py, and privacy.py are unchanged: identity is a
-sibling kernel and must not edit the governing constrain path.
-Identity kernel verification contracts (schemas, attestation, trust, binding)
-remain locked to private canonical source
-fafa3709c28fa9058f62bc9c2524e607e84a2fa3 (byte-identical with public v0.5).
-PR-F resolve adapter files and the identity preamble/docs that point at that
-sibling are locked to the same private source.
+Identity kernel verification contracts and resolve adapter files remain locked
+to private canonical source fafa3709c28fa9058f62bc9c2524e607e84a2fa3
+(byte-identical with public v0.5/v0.6 identity slice).
+
+v0.7 intentionally updates constrain API surface files (api/runtime/report/
+session/__init__/errors) and adds governing/semantic/_v07_* hybrid packages
+ported from private ea28dcfb9a132af780a016bc01d24fecd6f3eab0. Evaluator wall,
+privacy, and ext remain unchanged from v0.6.
 """
 
 from __future__ import annotations
@@ -33,13 +33,50 @@ FROZEN_SHA256 = {
     "src/shards/models.py": "65f05a27d850f36b2e762a98e9c40a66d5c03c9b0b6cd1675a7df3a72286801d",
     "src/constraints/constraint_middleware.py": "0432933bac4adde9ba555fbb6dce478ae8450b7eb32c5e6ce0f0d7512b0dca41",
     "src/agents/recursive_agent.py": "ba8e53bedd3acd6d230b236ac524bb0f1f386eca861cae64c5ec6c099de70859",
-    "ai4/constrain/api.py": "c26d2fe1d0526da59435085ec4ef6fe3f2f5c22a4cd9ef62f26595fd3c1d1a41",
-    "ai4/constrain/runtime.py": "aebe5604384b700b0be1a706d8e5ed05c8a28573c7afbd1d3f63473eed09029c",
-    "ai4/constrain/report.py": "51748a6620c1af7135c2bb89eb928fbe858914039e3c9f98f912ad5548a8aca8",
+    "ai4/constrain/api.py": "ffc5c379a186955bb6db48d16b720e0423a80fca08bab8e23d538a77e3aab752",
+    "ai4/constrain/runtime.py": "9e22e0f800ace1bcf291bd73d77473d1137584bbed039552b3ca475a7d810605",
+    "ai4/constrain/report.py": "b41c269fc9dd020efa236ce4ee5f69a7467dd43714f24359a13cf4b89e670d73",
     "ai4/constrain/ext.py": "d22e02cc7693061427655847dd6131fd95a898092afacd509701de0a32b4d023",
-    "ai4/constrain/session.py": "f18650d13c58b73101d43cedeed555c6d130c6175503bb8a0fb27cac359ca596",
+    "ai4/constrain/session.py": "a0fb2d30abe197131990aaf129667526f4ceb3355e65e5113b2f8988ce20de29",
     "ai4/constrain/evaluator_wall.py": "f146713893745d64b0cf823f2ac9c3fa10bcccf0400d493d80dc2bcb458e308d",
     "ai4/constrain/privacy.py": "87e9eaf077b84e60813ef3e1142c29e9e0d38ccc2e42fe0fca9ceb9fd46ecb58",
+    "ai4/constrain/__init__.py": "22c4de0c403640873ea68bd82728cf0f749681bda749c780241c054a93a5e3b8",
+    "ai4/constrain/errors.py": "842ea7f07db8d99f89fc103908962e5838c0ad9235eeb709e046e972394cd14a",
+    "ai4/constrain/governing.py": "ce689047703f4f7779feb8c962d4e21c38e1acc3949723ffa443a2309c76d499",
+    "ai4/constrain/semantic_examiner.py": "d41baa89b434bc67e6192991f165435382ee6fc97d55753b50fc0ac9e788ea4d",
+    "ai4/constrain/semantic_findings.py": "2fb245f6fa0e48d5b3366ea0191afbd0b35c3bea6666f79e1fe632e57cb2bcaa",
+    "ai4/constrain/semantic_fuse.py": "1c7d68a9648eb717f98c4e3e1440fa7fc2d35e43505f5ce76ef253ffc545627e",
+    "ai4/constrain/semantic_taxonomy.py": "981391ce142f73527f2d7debeeced820939d012498f5726f8ab8620da8befcc0",
+    "ai4/data/semantic_v07/finding_registry_v1.json": "e817eb246889cd19e090f96f005b577252b90b87028c50860e03cacbcee94535",
+    "ai4/data/semantic_v07/finding_policy_map_v1.json": "c84c613d7811fd0701ac90051d4f5b9640b90e8e978430bbd64f4cca81215a78",
+    "ai4/data/semantic_v07/observation_prompt_v1.txt": "6ec541e391f7207a1b12ee1a00c7311c8de4a50810651a0eca829a2f07dc62bf",
+    "ai4/constrain/_v07_3a/__init__.py": "7d1440160d14e32532ca64c648964863fd0aa5b2e16883a0e5c50c24ac937ee7",
+    "ai4/constrain/_v07_3a/_common.py": "f59a4c13cb7632c12b1a0eefd167da8efe0cbc2230ed8c01ced34aa71b7668e9",
+    "ai4/constrain/_v07_3a/abort.py": "e64ea7ff9e5fd88907e85ca07e80e816d7c8a4bccd3f444ba3ec78538ae7a6a9",
+    "ai4/constrain/_v07_3a/budget.py": "d012e117ef99af838ba5f3638d07a01c29f615e2b08bccffe53ee37722ebfec6",
+    "ai4/constrain/_v07_3a/context.py": "0715a119fdf9ac36912edacb572d37ee0405dabf214b623f73afd87f845bda86",
+    "ai4/constrain/_v07_3a/continuity.py": "e7c702511908f083fe8d42ee0d7be443b82f5fb85bc1443377c313e597dc8e29",
+    "ai4/constrain/_v07_3a/rebuild.py": "56e1ffdcae0bf28050fc5012a8d0bb8dbfafa933589f3c70805f1405ffd06405",
+    "ai4/constrain/_v07_3a/report.py": "8e96d22fc6cb969b6451566547e6dfd14e0cea9a1909c128a8f017037ef6af9d",
+    "ai4/constrain/_v07_3b/__init__.py": "b9aea99cea399fa7dbf5b328b38d5194303f501f7cb694855c53fc804d39d5f5",
+    "ai4/constrain/_v07_3b/budget.py": "84ce6d5ab55e644ae9e2de126c8f90a95e92495eca0994e4806ed6f160e65a60",
+    "ai4/constrain/_v07_3b/context.py": "468d4c5716c3fc2ad36c5b800ee77e226a927842f3708dfe32fbc3be4a665fc0",
+    "ai4/constrain/_v07_3b/feedback.py": "bdc87b9b5d704c91e7ea331a8ce20ce415ca8cf861ee18fe65572e26b53869a0",
+    "ai4/constrain/_v07_3b/origin.py": "c9a4dcf935eb93348f508515bb77959ce95ea082fa0c2472e544b83076c1beaf",
+    "ai4/constrain/_v07_3b/provenance.py": "ef43ea3f5405902beab1b2535913d9ea44fba39119a0f3a9a990bfdbf11fb96d",
+    "ai4/constrain/_v07_3b/readiness.py": "7a3043ccea1039da5168bbcf0b4a0b9df9b29b98b6aaf180764d490ea1c5e067",
+    "ai4/constrain/_v07_3b/report.py": "ef6b41ee5f1609f0fbca70aa59a8edaf2c29d6fa096a6eb75f1e2d49e8048de2",
+    "ai4/constrain/_v07_3b/separation.py": "8d5084efc51cf6da9e857a489211db0bb9f6bb341c2e079803a8a8bfeb977084",
+    "ai4/constrain/_v07_3b/session.py": "4fe0a6ff36731deccea7e95082cd1f7e8d601e8387d37edd55812204ebaebdb9",
+    "ai4/constrain/_v07_3b/snapshot.py": "fb0d26ec7afd2b59957f84b33c280b8cc931e9ee6512ad1a996f787d0fb7c906",
+    "ai4/constrain/_v07_3c/__init__.py": "6a4e9d9e2ce26b8bf19a605e84a5168d51cb5680975aa5b95e307cf87c49ef84",
+    "ai4/constrain/_v07_3c/entry.py": "c71ca21b7091b3ed932e4e5daab46a3658645dafa404d8cef20bd672a71e04f6",
+    "ai4/constrain/_v07_3c/install.py": "6e2f370ff719d11b878635f71122c7b3fcc9bed0ce6401b1eda9151419008f7c",
+    "ai4/constrain/_v07_3c/loop.py": "8e1f33d6348e9d3cf012b6c8f8dbfaa4d5519bc4884f1381265c9e43df768648",
+    "ai4/constrain/_v07_3c/observe.py": "6d3897ea4caaef5a330c734584d64de54cdebed6210b57b06b024477c00a384d",
+    "ai4/constrain/_v07_3c/persist.py": "42aef4c75ec4702db93068677c58426711279ae69a8b8b7a19584f2a5e8265f3",
+    "ai4/constrain/_v07_3c/ready.py": "24abf7fbfc27149a6fe28303200940e8b1c4386f19bf9b79cb935fc8e6e77de6",
+    "ai4/constrain/_v07_3c/report.py": "e400b5683db6c0eba61f997f56ef1d9cd948a8f35b43119248895cb982d1a5b9",
     "docs/protocol-v0.1.md": "e55a00f81701efa181eec65a9c67a94b077575796b850ad9eee47bea30c83ca7",
     "ai4/identity/__init__.py": "7aacf45b465eabb38f84618ec0355ef4f1e2db57eac744032c2da8df9e03457d",
     "ai4/identity/__main__.py": "cb40cee7990bce45f54de048c12eef740ecd591cb911a88df6a8a6a53a1ff6ee",

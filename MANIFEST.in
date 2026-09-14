@@ -1,2 +1,4 @@
 recursive-include ai4/data *.yaml
+recursive-include ai4/data *.json
+recursive-include ai4/data *.txt
 include ai4/py.typed

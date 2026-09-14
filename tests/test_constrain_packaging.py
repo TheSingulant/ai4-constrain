@@ -36,9 +36,15 @@ def test_sdist_and_wheel_contain_frozen_rubrics(tmp_path: Path):
     with tarfile.open(sdist) as archive:
         names = archive.getnames()
     assert any(name.endswith("ai4/data/rubrics/v0.1/privacy.yaml") for name in names)
+    assert any(name.endswith("ai4/data/semantic_v07/finding_registry_v1.json") for name in names)
+    assert any(name.endswith("ai4/data/semantic_v07/finding_policy_map_v1.json") for name in names)
+    assert any(name.endswith("ai4/data/semantic_v07/observation_prompt_v1.txt") for name in names)
     with zipfile.ZipFile(wheel) as archive:
         names = archive.namelist()
     assert any(name.endswith("ai4/data/rubrics/v0.1/privacy.yaml") for name in names)
+    assert any(name.endswith("ai4/data/semantic_v07/finding_registry_v1.json") for name in names)
+    assert any(name.endswith("ai4/data/semantic_v07/finding_policy_map_v1.json") for name in names)
+    assert any(name.endswith("ai4/data/semantic_v07/observation_prompt_v1.txt") for name in names)
 
 
 def test_clean_target_install_import_and_cli_do_not_need_repo(tmp_path: Path):
@@ -59,8 +65,11 @@ import os, sys
 from pathlib import Path
 os.chdir(Path(%r))
 assert not Path("ai4").exists()
-from ai4.constrain import ConstrainedSession, evaluate, run
+from ai4.constrain import ConstrainedSession, SEMANTIC_EXAMINER_OPERATIONAL, evaluate, run
 from ai4.constrain.rubrics import packaged_rubric_bytes
+from ai4.constrain.semantic_taxonomy import finding_registry_sha256
+assert SEMANTIC_EXAMINER_OPERATIONAL is False
+assert finding_registry_sha256()
 report = evaluate(%r)
 assert report.decision == "accept", report.decision
 assert packaged_rubric_bytes()

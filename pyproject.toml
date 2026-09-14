@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai4-constrain"
-version = "0.6.0"
-description = "Public ai4.constrain v0.6 runtime: frozen condition-D, ConstrainedSession persistence, proposal-provider policy wall, evaluator policy wall, sibling ai4.identity provenance kernel, and offline .ai4 FileResolver discovery adapter."
+version = "0.7.0"
+description = "AI4 constrained-authority runtime (v0.7): ai4.constrain DecisionReport path, optional GoverningIntegration hybrid semantic fuse, fail-closed controls, sibling ai4.identity provenance, offline .ai4 FileResolver."
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
@@ -30,7 +30,7 @@ include = ["src*", "ai4*"]
 [tool.setuptools.package-data]
 "ai4" = ["py.typed"]
 "ai4.identity" = ["py.typed"]
-"ai4.data" = ["rubrics/v0.1/*.yaml"]
+"ai4.data" = ["rubrics/v0.1/*.yaml", "semantic_v07/*.json", "semantic_v07/*.txt"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

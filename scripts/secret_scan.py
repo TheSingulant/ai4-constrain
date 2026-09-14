@@ -47,10 +47,16 @@ PATTERNS = (
     ("pem_private_key", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----")),
     ("aws_access_key_id", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
     ("aws_secret_access_key", re.compile(r"(?i)aws_secret_access_key\s*[:=]\s*\S{20,}")),
+    ("aws_arn", re.compile(r"\b" + "arn:" + "aws:" + r"[a-z0-9-]+:[a-z0-9-]*:\d{12}:")),
+    ("aws_account_id_known", re.compile(r"\b" + "549024" + "266950" + r"\b")),
     ("telegram_bot_token", re.compile(r"\b\d{8,10}:[A-Za-z0-9_-]{35}\b")),
+    ("botfather", re.compile(r"(?i)\b" + "Bot" + "Father" + r"\b")),
     ("openai_sk", re.compile(r"\bsk-(?:live|proj)-[A-Za-z0-9]{16,}\b")),
     ("generic_bearer", re.compile(r"(?i)authorization:\s*bearer\s+[A-Za-z0-9._\-]{24,}")),
     ("vultr_api_key", re.compile(r"(?i)vultr[_-]?api[_-]?key\s*[:=]\s*\S{16,}")),
+    ("internal_val_marker", re.compile(r"\b" + "valid" + "ation" + "_00" + r"\b")),
+    ("internal_ud1", re.compile(r"\b" + "UD" + "1" + r"\b")),
+    ("internal_impl_report", re.compile(r"(?i)\b" + "IMPLEMENTATION" + r"_REPORT\b")),
 )
 
 ALLOW_SUBSTRINGS = (
@@ -73,6 +79,9 @@ def scan(root: Path) -> list[str]:
         if any(part in SKIP_DIRS for part in path.parts):
             continue
         if path.suffix.lower() in SKIP_SUFFIXES:
+            continue
+        # Scanner definitions are not credentials.
+        if path.resolve() == Path(__file__).resolve():
             continue
         try:
             text = path.read_text(encoding="utf-8")

@@ -37,6 +37,25 @@ _REQUIRED_REPORT_KEYS = (
     "telemetry",
     "versions",
 )
+# Hybrid / semantic identity must not be silently dropped from 0.1.x OFF
+# documents. Schema 0.2.0 parsing lives in the private V07-3B reader.
+_HYBRID_IDENTITY_REPORT_KEYS = frozenset(
+    {
+        "artifact_snapshot",
+        "ever_on",
+        "ever_required",
+        "hybrid",
+        "hybrid_context",
+        "hybrid_identity",
+        "provenance_evidence",
+        "score_maps",
+        "semantic",
+        "semantic_abort",
+        "semantic_block",
+        "semantic_findings",
+        "semantic_success",
+    }
+)
 
 
 def product_decision(state: TerminalState) -> str | None:
@@ -601,6 +620,12 @@ class DecisionReport:
     def from_dict(cls, raw: object) -> DecisionReport:
         if not isinstance(raw, dict):
             raise ConstraintExecutionError("DecisionReport must be a JSON object")
+        leaked = sorted(str(key) for key in raw if key in _HYBRID_IDENTITY_REPORT_KEYS)
+        if leaked:
+            raise ConstraintExecutionError(
+                f"DecisionReport carries hybrid identity field(s) {leaked}; "
+                "refusing silent drop"
+            )
         missing = [key for key in _REQUIRED_REPORT_KEYS if key not in raw]
         if missing:
             raise ConstraintExecutionError(f"DecisionReport missing keys: {missing}")

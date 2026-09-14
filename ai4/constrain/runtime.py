@@ -12,6 +12,7 @@ from ai4.constrain.ext import (
     KNOWN_EVALUATOR_IDS,
     KNOWN_PROVIDER_IDS,
 )
+from ai4.constrain.governing import GoverningIntegration
 
 RUNTIME_VERSION = "0.1.0"
 REPORT_SCHEMA_VERSION = "0.1.0"
@@ -37,6 +38,7 @@ class RuntimeConfig:
     timeout_s: float = 30.0
     max_completions: int = 3
     redact: bool = True
+    integration: GoverningIntegration | None = None
 
     def validate(self) -> RuntimeConfig:
         if self.rubric_set != FROZEN_RUBRIC_SET:
@@ -53,6 +55,12 @@ class RuntimeConfig:
             )
         if self.max_revision_rounds < 0 or self.max_completions < 0 or self.timeout_s < 0:
             raise ConstraintExecutionError("Runtime bounds must be >= 0")
+        if self.integration is not None:
+            if not isinstance(self.integration, GoverningIntegration):
+                raise ConstraintExecutionError(
+                    "RuntimeConfig.integration must be a GoverningIntegration"
+                )
+            self.integration.validate()
         return self
 
 

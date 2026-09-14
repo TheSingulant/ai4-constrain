@@ -51,6 +51,20 @@ from ai4.constrain.runtime import (
 from ai4.constrain.trace import JsonlTraceWriter, utc_now
 
 SESSION_SCHEMA_VERSION = "0.1.1"
+# Hybrid identity must not be silently dropped from 0.1.x OFF snapshots.
+# Schema 0.2.0 parsing lives in the private V07-3B reader.
+_HYBRID_IDENTITY_SESSION_KEYS = frozenset(
+    {
+        "artifact_snapshot",
+        "continuity",
+        "ever_on",
+        "ever_required",
+        "hybrid",
+        "hybrid_context",
+        "hybrid_identity",
+        "semantic",
+    }
+)
 _SESSION_ID_RE = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 _MAX_HISTORY_TURNS = 64
 _POLICY_IDENTITY_KEYS = (
@@ -275,6 +289,12 @@ class SessionState:
     def from_dict(cls, raw: object) -> SessionState:
         if not isinstance(raw, dict):
             raise ConstraintExecutionError("SessionState must be a JSON object")
+        leaked = sorted(str(key) for key in raw if key in _HYBRID_IDENTITY_SESSION_KEYS)
+        if leaked:
+            raise ConstraintExecutionError(
+                f"SessionState carries hybrid identity field(s) {leaked}; "
+                "refusing silent drop"
+            )
         if raw.get("schema_version") != SESSION_SCHEMA_VERSION:
             raise ConstraintExecutionError(
                 f"Unsupported session schema_version {raw.get('schema_version')!r}"
@@ -392,6 +412,10 @@ class FileSessionStore:
     is persisted. Unrecognized secrets, non-pattern PII, and attacker-edited
     JSON can still be present on disk. Treat the directory as local and
     trusted. There is no cryptographic authenticity check.
+
+    Persistence success is ``save`` returning after the tmp write and
+    ``Path.replace``. That is the live commit point. This store does not
+    fsync, does not use a WAL, and does not claim power-loss durability.
     """
 
     def __init__(self, directory: str | Path) -> None:
@@ -430,6 +454,7 @@ class FileSessionStore:
         path = self._path(sid)
         tmp = path.with_suffix(".json.tmp")
         try:
+            # Live commit point: tmp write then Path.replace. Not fsync/WAL.
             tmp.write_text(state.to_json() + "\n", encoding="utf-8")
             tmp.replace(path)
         except OSError as exc:

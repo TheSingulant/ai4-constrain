@@ -1,0 +1,62 @@
+# PyPI trusted publishing for ai4-constrain (OIDC only — no long-lived tokens).
+# Requires:
+#   1) PyPI project ai4-constrain (or pending publisher)
+#   2) Trusted publisher: Owner=TheSingulant, Repo=ai4-constrain,
+#      Workflow=publish.yml, Environment=pypi
+#   3) GitHub Environment "pypi" (optional required reviewers recommended)
+#
+# Triggers: GitHub Release published, or intentional workflow_dispatch.
+# Does NOT publish on branch push or tag push alone.
+
+name: publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build
+        run: python -m pip install -U pip build
+      - name: Secret scan (fail closed)
+        run: python scripts/secret_scan.py
+      - name: Build sdist and wheel
+        run: python -m build
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/ai4-constrain/
+    permissions:
+      id-token: write  # mandatory for Trusted Publishing (OIDC)
+      contents: read
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # No user/password/token — OIDC mints short-lived credentials.

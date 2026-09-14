@@ -1,20 +1,9 @@
-# Roadmap
+# Roadmap (docs pointer)
 
-v0.1 is an offline evaluator and experiment harness plus the public
-`ai4.constrain` product wrapper (frozen condition D, not a claim D beat
-C; Stage 2D remains `null_retained_D_adds_cost`). `ConstrainedSession`
-holds that path across turns. See
-`docs/constrain-session.md`. Evaluator **implementation** interchange
-is allowed only behind the frozen v0.1 scoring/control contract
-(Option A). There is no live/LLM judge and no second production
-evaluator. Evaluator implementation interchange does not demonstrate
-alignment persistence or correctness across judges.
+Canonical public roadmap: [`../ROADMAP.md`](../ROADMAP.md).
 
-`ai4.identity` is a sibling offline identity/provenance kernel
-(`docs/identity.md`). It is not on the governing constrain path.
-Identity is not trust. `.ai4` resolution is a discovery adapter
-(`docs/identity-resolution.md`), not kernel verification and not
-constraint-policy authority.
+**0.7.0 (done):** optional hybrid governing integration (default OFF), semantic packaged artifacts, public CI/docs.
 
+**Next:** dedicated-context lifecycle and expanded authority-control work (not claimed complete here).
 
-Production Telegram work stays off this path. See `docs/protocol-v0.1.md`.
+Production bot/host work stays off this path. Stage 2D remains `null_retained_D_adds_cost`.

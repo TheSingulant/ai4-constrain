@@ -167,6 +167,11 @@ There is no cryptographic authenticity check. The snapshot directory is
 local and must be treated as trusted storage for file integrity, not as
 a policy oracle.
 
+`FileSessionStore.save` is considered successful when it returns after
+the tmp write and `Path.replace`. That is the live commit point. The
+implementation does not fsync, does not use a WAL, and does not provide
+power-loss durability.
+
 ## Explain / shard card
 
 `--explain` and `shard_card(report)` project an already-emitted

@@ -15,6 +15,7 @@
 - **Dedicated-context lifecycle and expanded authority-control work** (separate phase; no operational topology in this repo)
 - Broader developer examples for hybrid `GoverningIntegration` (still optional / fail-closed)
 - Discoverability hygiene (topics, homepage, downstream dataset mapping) as process work outside the library API
+- Transaction-control scaffold (`ai4.transaction`) is feature-branch work only; not a 0.7.0 completeness claim and not a Telegram host
 
 ## Explicitly out of scope for this public tree
 

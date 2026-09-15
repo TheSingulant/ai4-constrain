@@ -101,6 +101,21 @@ ai4-constrain --help
 ai4-constrain session complete --prompt "Please give a brief, checkable outline of options and limits."
 ```
 
+## Transaction Control (scaffold)
+
+Class **009** downloadable surface: `ai4.transaction` prepares a v1 **Solana native SOL transfer**, runs the intent through `ai4.constrain` (`evaluate` only by default), and on ALLOW emits an unsigned stub plus a Solana Pay / Phantom browse handoff URI. Signing stays in the user wallet. Status polling uses stdlib JSON-RPC only when `AI4_SOLANA_RPC_URL` or `--rpc-url` is set.
+
+```bash
+ai4-transaction prepare --network mainnet-beta --asset SOL --amount 0.1 --destination <solana-address>
+ai4-transaction status <signature>
+```
+
+This is a feature-branch scaffold. Package version remains **0.7.0**. It is not a PyPI release of transaction features.
+
+Class **042** hosted Telegram is **not** in this tree and is not deployed from this PR. Handler design: [`docs/telegram-transaction-design.md`](docs/telegram-transaction-design.md). Architecture, fail-closed rules, and mint-flow findings: [`docs/transaction-control.md`](docs/transaction-control.md).
+
+Constrain-only docs (`DecisionReport`, sessions, identity FileResolver) do **not** already satisfy a cryptocurrency-transaction goods surface. FileResolver is offline `.ai4` fixture resolution. It does not prepare or track mint transactions.
+
 ## Docs
 
 | Doc | Topic |
@@ -111,6 +126,8 @@ ai4-constrain session complete --prompt "Please give a brief, checkable outline 
 | [`docs/validation.md`](docs/validation.md) | Public validation methodology |
 | [`docs/identity.md`](docs/identity.md) | Sibling identity kernel |
 | [`docs/identity-resolution.md`](docs/identity-resolution.md) | Offline `.ai4` discovery |
+| [`docs/transaction-control.md`](docs/transaction-control.md) | Transaction control scaffold |
+| [`docs/telegram-transaction-design.md`](docs/telegram-transaction-design.md) | Future Telegram host (design only) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Version history |
 | [`ROADMAP.md`](ROADMAP.md) | Done vs next |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Dev workflow |

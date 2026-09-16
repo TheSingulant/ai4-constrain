@@ -14,6 +14,9 @@ from ai4.transaction.desktop_handoff import (
     LIVE_PROOF_SHA256,
     PHANTOM_BROWSE_CHANNEL,
     PHANTOM_BROWSE_OWNER_NOTE,
+    live_proof_github_blob_url,
+    live_proof_https_url,
+    live_proof_jsdelivr_url,
     render_desktop_handoff_html,
     write_desktop_handoff_html,
 )
@@ -157,6 +160,33 @@ def test_committed_https_live_proof_html_bakes_binding():
     assert "--seed" not in html
     assert "BEGIN PRIVATE KEY" not in html
     assert html.count("Approve in Phantom") >= 1
+    assert "python3 -m http.server" not in html
+    assert "python -m http.server" not in html
+
+
+def test_live_proof_https_urls_pin_commit_path():
+    sha = "317a0f6f1b90bc2730e9bb8132d895f88c375046"
+    https = live_proof_https_url(sha)
+    assert https == (
+        "https://rawcdn.githack.com/TheSingulant/ai4-constrain/"
+        f"{sha}/{LIVE_PROOF_HTML_REPO_PATH}"
+    )
+    assert https.startswith("https://")
+    jsd = live_proof_jsdelivr_url(sha)
+    assert jsd == (
+        "https://cdn.jsdelivr.net/gh/TheSingulant/ai4-constrain@"
+        f"{sha}/{LIVE_PROOF_HTML_REPO_PATH}"
+    )
+    blob = live_proof_github_blob_url(sha)
+    assert blob == (
+        "https://github.com/TheSingulant/ai4-constrain/blob/"
+        f"{sha}/{LIVE_PROOF_HTML_REPO_PATH}"
+    )
+
+
+def test_live_proof_https_url_refuses_blank_sha():
+    with pytest.raises(TransactionControlError, match="commit SHA"):
+        live_proof_https_url("  ")
 
 
 def test_desktop_html_refuses_mainnet_rpc_host():

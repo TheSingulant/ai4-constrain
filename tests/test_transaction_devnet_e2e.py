@@ -7,6 +7,11 @@ from pathlib import Path
 
 import pytest
 
+from ai4.transaction.desktop_handoff import (
+    LIVE_PROOF_HTML_REPO_PATH,
+    LIVE_PROOF_SHA256,
+    live_proof_https_url,
+)
 from ai4.transaction.devnet_e2e import (
     EXIT_FAIL,
     EXIT_OK,
@@ -28,6 +33,7 @@ from ai4.transaction.types import Decision, Network
 from tests.transaction_util import fixture_report, solana_address, solana_signature
 
 DEST = solana_address(23)
+LIVE_DEST = "4WDYrTNTit9m7kU5y2LWCfvf35pQo9vbjPTDyiDHEq9e"
 SIG = solana_signature(11)
 RPC = "https://rpc.example.test"
 ROOT = Path(__file__).resolve().parents[1]
@@ -174,6 +180,33 @@ def test_prepare_only_allow_prints_binding_and_uris(monkeypatch, capsys, tmp_pat
     assert DEST in html
     assert "1000000" in html
     assert "signAndSendTransaction" in html
+
+
+def test_prepare_only_live_dest_prints_https_owner_url(monkeypatch, capsys):
+    monkeypatch.delenv("AI4_SOLANA_RPC_URL", raising=False)
+    code = main(
+        [
+            "--destination",
+            LIVE_DEST,
+            "--amount",
+            "0.001",
+            "--rpc-url",
+            RPC,
+            "--prepare-only",
+            "--no-desktop-handoff",
+        ],
+        evaluate_fn=_accept,
+        rpc_post=_rpc_prepare_ok(),
+    )
+    captured = capsys.readouterr()
+    assert code == EXIT_OK
+    assert LIVE_PROOF_SHA256 in captured.out
+    assert live_proof_https_url("<COMMIT_SHA>") in captured.out
+    assert "rawcdn.githack.com" in captured.out
+    assert LIVE_PROOF_HTML_REPO_PATH in captured.out
+    assert "Owner HTTPS URL" in captured.out
+    assert "python3 -m http.server" not in captured.out
+    assert "jsdelivr.net" in captured.out
 
 
 def test_handoff_binding_hash_survives_e2e_receipt(monkeypatch):

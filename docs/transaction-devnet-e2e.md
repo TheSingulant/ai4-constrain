@@ -86,16 +86,18 @@ Stdout prints:
 | --- | --- | --- |
 | Solana Pay `solana:<dest>?amount=...&ai4-network=devnet` | Wallet-agnostic transfer request. Mobile wallets register the scheme or scan a QR. | Mobile / QR |
 | `https://phantom.app/ul/browse/<url>` | Phantom **iOS/Android** in-app browser Universal Link. **Not** consumed by the Chrome/desktop extension (often redirects to phantom.com/download). | **MOBILE_ONLY** |
-| Committed `examples/transaction/live_proof/fe30e76a_devnet_handoff.html` over **HTTPS** | Chrome + Phantom **extension**. Open the jsDelivr GitHub CDN URL (or GitHub blob). Click **Approve in Phantom**. Uses `window.phantom.solana`, `SystemProgram.transfer` with **exact** dest + lamports, `signAndSendTransaction` (Phantom dialog, then wallet may broadcast). Shows the public signature only after Phantom returns it. Does not poll `status()`. | **Desktop owner path** |
+| Committed `examples/transaction/live_proof/fe30e76a_devnet_handoff.html` over **HTTPS** | Chrome + Phantom **extension**. Open the **rawcdn.githack.com** URL for this commit (HTML MIME). Click **Approve in Phantom**. Uses `window.phantom.solana`, `SystemProgram.transfer` with **exact** dest + lamports, `signAndSendTransaction` (Phantom dialog, then wallet may broadcast). Shows the public signature only after Phantom returns it. Does not poll `status()`. jsDelivr hosts the same bytes but currently serves `text/plain` + `nosniff`, so Chrome will not run it as a page. GitHub blob is for review only. | **Desktop owner path** |
 | Generated HTML on `http://127.0.0.1` | Same injected-provider page, local only. | Optional offline/dev fallback |
 
 Phantom injects the provider on `https://`, `localhost`, and `127.0.0.1` — **not** `file://`.
 
-**Owner desktop path:** open the committed HTML over HTTPS, for example:
+**Owner desktop path:** open the committed HTML over HTTPS (HTML MIME), for example:
 
 ```text
-https://cdn.jsdelivr.net/gh/TheSingulant/ai4-constrain@<COMMIT_SHA>/examples/transaction/live_proof/fe30e76a_devnet_handoff.html
+https://rawcdn.githack.com/TheSingulant/ai4-constrain/<COMMIT_SHA>/examples/transaction/live_proof/fe30e76a_devnet_handoff.html
 ```
+
+jsDelivr also hosts the file (`https://cdn.jsdelivr.net/gh/TheSingulant/ai4-constrain@<COMMIT_SHA>/examples/transaction/live_proof/fe30e76a_devnet_handoff.html`) but currently returns `Content-Type: text/plain` with `X-Content-Type-Options: nosniff`, so Chrome will not execute it as a page. Use the githack URL as the click path. GitHub blob is for source review.
 
 Do **not** run `python3 -m http.server` as the owner path. Local `127.0.0.1` serving is only for offline development.
 
@@ -103,7 +105,7 @@ Do **not** run `python3 -m http.server` as the owner path. Local `127.0.0.1` ser
 
 **Desktop (Chrome extension) — owner path:**
 
-1. Open the **HTTPS** live-proof HTML in Chrome (jsDelivr URL for this commit).
+1. Open the **HTTPS** live-proof HTML in Chrome (rawcdn.githack.com URL for this commit; HTML MIME).
 2. Confirm Phantom's cluster is **Solana Devnet**.
 3. Confirm destination `4WDYrTNTit9m7kU5y2LWCfvf35pQo9vbjPTDyiDHEq9e`, lamports `1000000`, sha256 `fe30e76ac25e766f37d4f719caaa7efa7b2603afbf388dbca609154258a37da0`.
 4. Click **Approve in Phantom**. Approve in Phantom's dialog. Copy the **public** signature if Phantom returns one.
@@ -181,7 +183,7 @@ Do not invent a live signature or explorer link.
 - [ ] DecisionReport (`accept` / product `ALLOW`)
 - [ ] Approved binding fields + `sha256`
 - [ ] Handoff URI (`solana:...`, `ai4-network=devnet`) and binding `sha256`
-- [ ] Desktop **HTTPS** HTML (`live_proof/fe30e76a_devnet_handoff.html` via jsDelivr) or MOBILE_ONLY browse UL on a phone
+- [ ] Desktop **HTTPS** HTML (`live_proof/fe30e76a_devnet_handoff.html` via rawcdn.githack.com) or MOBILE_ONLY browse UL on a phone
 - [ ] `LIVE_WALLET_HANDOFF` (owner): wallet cluster confirmed DevNet
 - [ ] `LIVE_SIGNATURE` (owner): public signature only
 - [ ] `status()` progression

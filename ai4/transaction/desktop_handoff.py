@@ -9,6 +9,10 @@ This module renders a self-contained HTML page that asks Phantom to
 ``signAndSendTransaction`` a ``SystemProgram.transfer`` using the **exact**
 approved destination and lamports. AI4 never sees keys. The page does not
 sign; the user's extension does.
+
+The owner click-path is an HTTPS URL that serves the committed HTML as
+``text/html`` (Phantom injects). jsDelivr currently serves the same GitHub
+blob as ``text/plain`` with ``nosniff``, so Chrome will not execute it.
 """
 
 from __future__ import annotations
@@ -41,22 +45,40 @@ PHANTOM_BROWSE_OWNER_NOTE = (
     "in-app browser Universal Link. The Chrome/desktop extension does not consume "
     "it and commonly redirects to phantom.com/download while the extension stays idle. "
     "Desktop owner path: open the committed HTTPS HTML handoff in Chrome with Phantom "
-    f"({LIVE_PROOF_HTML_REPO_PATH}). http://127.0.0.1 is an optional offline/dev fallback only."
+    f"({LIVE_PROOF_HTML_REPO_PATH}, HTML MIME CDN). "
+    "http://127.0.0.1 is an optional offline/dev fallback only."
 )
 
 
-def live_proof_jsdelivr_url(commit_sha: str) -> str:
+def _require_commit_sha(commit_sha: str) -> str:
     sha = str(commit_sha).strip()
     if not sha:
         raise TransactionControlError(
-            "commit SHA is required for the jsDelivr handoff URL",
-            reasons=("commit SHA is required for the jsDelivr handoff URL",),
+            "commit SHA is required for the HTTPS handoff URL",
+            reasons=("commit SHA is required for the HTTPS handoff URL",),
         )
+    return sha
+
+
+def live_proof_https_url(commit_sha: str) -> str:
+    """Owner click-path: same GitHub blob served as ``text/html`` over HTTPS.
+
+    Phantom injects only when the document is executed as HTML.
+    ``cdn.jsdelivr.net/gh`` currently serves this file as ``text/plain`` with
+    ``X-Content-Type-Options: nosniff``, so Chrome will not run it as a page.
+    ``rawcdn.githack.com`` serves the commit path as ``text/html``.
+    """
+    sha = _require_commit_sha(commit_sha)
+    return f"https://rawcdn.githack.com/{GITHUB_REPO}/{sha}/{LIVE_PROOF_HTML_REPO_PATH}"
+
+
+def live_proof_jsdelivr_url(commit_sha: str) -> str:
+    sha = _require_commit_sha(commit_sha)
     return f"https://cdn.jsdelivr.net/gh/{GITHUB_REPO}@{sha}/{LIVE_PROOF_HTML_REPO_PATH}"
 
 
 def live_proof_github_blob_url(commit_sha: str) -> str:
-    sha = str(commit_sha).strip()
+    sha = _require_commit_sha(commit_sha)
     return f"https://github.com/{GITHUB_REPO}/blob/{sha}/{LIVE_PROOF_HTML_REPO_PATH}"
 
 

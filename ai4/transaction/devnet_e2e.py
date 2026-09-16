@@ -5,8 +5,8 @@ Live path: user intent → validate → constrain firewall → DecisionReport AL
 broadcasts on **devnet** → ``status()`` observes lifecycle → AI4 receipt.
 
 This module never signs, never loads key files, and never broadcasts from a
-server key. Desktop signing is the Phantom Chrome extension via a local HTML
-page (injected provider). ``phantom.app/ul/browse`` is MOBILE_ONLY.
+server key. Desktop signing is the Phantom Chrome extension via committed
+HTTPS HTML (injected provider). ``phantom.app/ul/browse`` is MOBILE_ONLY.
 """
 
 from __future__ import annotations
@@ -29,6 +29,9 @@ from ai4.transaction.desktop_handoff import (
     LIVE_PROOF_SHA256,
     PHANTOM_BROWSE_OWNER_NOTE,
     default_desktop_handoff_path,
+    live_proof_github_blob_url,
+    live_proof_https_url,
+    live_proof_jsdelivr_url,
     local_http_open_url,
     local_http_serve_command,
     write_desktop_handoff_html,
@@ -584,13 +587,15 @@ def print_prepare_artifacts(
             f"(sha256={LIVE_PROOF_SHA256}).\n"
         )
         stream.write(
-            "HTTPS URL (jsDelivr, after this commit is on GitHub): "
-            "https://cdn.jsdelivr.net/gh/TheSingulant/ai4-constrain@<COMMIT_SHA>/"
-            f"{LIVE_PROOF_HTML_REPO_PATH}\n"
+            "Owner HTTPS URL (HTML MIME; open this in Chrome): "
+            f"{live_proof_https_url('<COMMIT_SHA>')}\n"
         )
         stream.write(
-            "GitHub blob (after push): "
-            f"https://github.com/TheSingulant/ai4-constrain/blob/<COMMIT_SHA>/{LIVE_PROOF_HTML_REPO_PATH}\n"
+            "jsDelivr (same bytes; currently text/plain + nosniff — not the click path): "
+            f"{live_proof_jsdelivr_url('<COMMIT_SHA>')}\n"
+        )
+        stream.write(
+            f"GitHub blob (after push): {live_proof_github_blob_url('<COMMIT_SHA>')}\n"
         )
     stream.write(
         "Click \"Approve in Phantom\" (user gesture). Phantom's dialog is the "

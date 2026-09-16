@@ -12,7 +12,8 @@ URI, writes a desktop Phantom-extension HTML page, then (optionally) polls
 `https://phantom.app/ul/browse/...` is **MOBILE_ONLY**. Desktop owners open the
 committed HTTPS page
 [`live_proof/fe30e76a_devnet_handoff.html`](live_proof/fe30e76a_devnet_handoff.html)
-in Chrome with Phantom (jsDelivr). `http://127.0.0.1` is an optional
+in Chrome with Phantom over HTTPS (rawcdn.githack.com HTML MIME URL at the
+commit SHA). `http://127.0.0.1` is an optional
 offline/dev fallback only.
 
 AI4 does not hold keys or assets. There is no signing automation.

@@ -37,7 +37,7 @@ not a PyPI release of transaction features.
 | Handoff URI | |
 | Phantom browse URI (MOBILE_ONLY) | |
 | Desktop HTML path (`http://127.0.0.1`) | optional offline fallback only |
-| HTTPS live-proof HTML (jsDelivr) | |
+| HTTPS live-proof HTML (rawcdn.githack.com, HTML MIME) | |
 
 ## Live wallet handoff (owner)
 

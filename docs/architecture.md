@@ -7,7 +7,7 @@
 3. **Sessions (`ConstrainedSession`)** — persistent constrained state across turns. See `docs/constrain-session.md`.
 4. **Optional hybrid governing (v0.7)** — packaged semantic observe/findings/fuse primitives plus `_v07_3a`/`_v07_3b`/`_v07_3c` continuity and activation. Default **OFF** unless `RuntimeConfig.integration` carries a validated `GoverningIntegration`.
 5. **Sibling identity (`ai4.identity`)** — offline provenance kernel and `.ai4` discovery adapter. Not imported by `run` / `evaluate` / session walls. See `docs/identity.md` and `docs/identity-resolution.md`.
-6. **Transaction control scaffold (`ai4.transaction`)**: Solana native SOL transfer prepare / firewall / status. Uses `evaluate` on a structured proposal. See `docs/transaction-control.md`. Scaffold only; not a released PyPI feature claim. Not a Telegram host.
+6. **Transaction control scaffold (`ai4.transaction`)**: Solana native SOL transfer prepare / firewall / status, plus a DevNet-only E2E proof harness. Uses `evaluate` on a structured proposal. See `docs/transaction-control.md` and `docs/transaction-devnet-e2e.md`. Scaffold only; not a released PyPI feature claim. Not a Telegram host.
 
 ## Control walls
 

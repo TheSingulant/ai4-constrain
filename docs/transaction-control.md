@@ -196,6 +196,17 @@ CLI never labels a fail-closed receipt as confirmed.
 
 Explorer links are optional and only when `--network` is supplied.
 
+## DevNet E2E proof
+
+A separate **DevNet-only** harness (`ai4.transaction.devnet_e2e`, example at
+`examples/transaction/devnet_e2e.py`) forces `network=devnet`, caps the proof
+at 0.01 SOL, never signs, and records an `AI4Receipt` after the user wallet
+broadcasts. See [`transaction-devnet-e2e.md`](transaction-devnet-e2e.md).
+
+The general `prepare_transfer` / `ai4-transaction prepare` path still accepts
+`mainnet-beta` / `localnet` for the scaffold. The live E2E proof entrypoint
+must not.
+
 ## Audit-log SaaS stub
 
 `ai4.transaction.audit_stub` defines `AuditLogSink` (Protocol) and

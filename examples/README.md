@@ -11,6 +11,14 @@ python -m ai4.constrain session demo
 
 See `examples/constrain/README.md`.
 
+Solana DevNet E2E proof (scaffold; version remains 0.7.0; no signing):
+
+```bash
+python examples/transaction/devnet_e2e.py --help
+```
+
+See `examples/transaction/README.md` and `docs/transaction-devnet-e2e.md`.
+
 Experiment harness (A/B/C/D pilot):
 
 ```bash

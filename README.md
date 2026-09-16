@@ -112,6 +112,8 @@ ai4-transaction status <signature>
 
 This is a feature-branch scaffold. Package version remains **0.7.0**. It is not a PyPI release of transaction features.
 
+**DevNet E2E proof (tiny SOL amounts only):** [`examples/transaction/devnet_e2e.py`](examples/transaction/devnet_e2e.py) forces `network=devnet`, prints the DecisionReport / approved binding / Phantom handoff URI, and observes `status()` after **you** sign in a self-custodial wallet. AI4 does not hold keys. Runbook: [`docs/transaction-devnet-e2e.md`](docs/transaction-devnet-e2e.md).
+
 Class **042** hosted Telegram is **not** in this tree and is not deployed from this PR. Handler design: [`docs/telegram-transaction-design.md`](docs/telegram-transaction-design.md). Architecture, fail-closed rules, and mint-flow findings: [`docs/transaction-control.md`](docs/transaction-control.md).
 
 Constrain-only docs (`DecisionReport`, sessions, identity FileResolver) do **not** already satisfy a cryptocurrency-transaction goods surface. FileResolver is offline `.ai4` fixture resolution. It does not prepare or track mint transactions.
@@ -127,6 +129,7 @@ Constrain-only docs (`DecisionReport`, sessions, identity FileResolver) do **not
 | [`docs/identity.md`](docs/identity.md) | Sibling identity kernel |
 | [`docs/identity-resolution.md`](docs/identity-resolution.md) | Offline `.ai4` discovery |
 | [`docs/transaction-control.md`](docs/transaction-control.md) | Transaction control scaffold |
+| [`docs/transaction-devnet-e2e.md`](docs/transaction-devnet-e2e.md) | Solana DevNet E2E proof harness |
 | [`docs/telegram-transaction-design.md`](docs/telegram-transaction-design.md) | Future Telegram host (design only) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Version history |
 | [`ROADMAP.md`](ROADMAP.md) | Done vs next |

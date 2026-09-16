@@ -11,7 +11,13 @@ from ai4.transaction.binding import verify_solana_pay_binding
 from ai4.transaction.errors import TransactionControlError, TransactionValidationError
 from ai4.transaction.firewall import build_firewall_proposal, map_constrain_decision, run_firewall
 from ai4.transaction.handoff import phantom_browse_uri, solana_pay_transfer_uri
+from ai4.transaction.devnet_e2e import (
+    PROOF_MAX_AMOUNT_SOL,
+    require_devnet,
+    run_devnet_e2e,
+)
 from ai4.transaction.prepare import prepare_transfer
+from ai4.transaction.receipt import AI4Receipt, ATTRIBUTION, build_ai4_receipt
 from ai4.transaction.status import status
 from ai4.transaction.types import (
     DEFAULT_MAX_AMOUNT_SOL,
@@ -30,7 +36,10 @@ from ai4.transaction.types import (
 from ai4.transaction.validate import validate_solana_address, validate_transfer_intent
 
 __all__ = [
+    "AI4Receipt",
+    "ATTRIBUTION",
     "DEFAULT_MAX_AMOUNT_SOL",
+    "PROOF_MAX_AMOUNT_SOL",
     "ApprovedBinding",
     "Asset",
     "AuditLogService",
@@ -46,10 +55,13 @@ __all__ = [
     "TransferConfig",
     "TransferIntent",
     "UnsignedPayload",
+    "build_ai4_receipt",
     "build_firewall_proposal",
     "map_constrain_decision",
     "phantom_browse_uri",
     "prepare_transfer",
+    "require_devnet",
+    "run_devnet_e2e",
     "run_firewall",
     "solana_pay_transfer_uri",
     "status",

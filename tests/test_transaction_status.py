@@ -56,7 +56,50 @@ def test_status_fail_closed_when_confirmation_unknown():
     assert receipt.fail_closed is True
 
 
-def test_status_ok_finalized():
+def test_status_processed_is_pending_like_not_fail_closed():
+    def fake(_url, _method, _params, _timeout):
+        return {"result": {"value": [{"confirmationStatus": "processed", "slot": 7, "err": None}]}}
+
+    receipt = status(SIG, rpc_url="https://rpc.example.test", rpc_post=fake)
+    assert receipt.fail_closed is False
+    assert receipt.confirmation_status == "processed"
+    from ai4.transaction.status import format_status_summary
+
+    text = format_status_summary(receipt)
+    assert "pending-like" in text
+    assert "not yet confirmed" in text
+
+
+def test_status_fail_closed_summary_never_says_confirmed():
+    from ai4.transaction.status import format_status_summary
+    from ai4.transaction.types import Receipt
+
+    leaked = Receipt(
+        signature=SIG,
+        fail_closed=True,
+        reasons=("slot is not an integer; fail closed",),
+        confirmation_status="confirmed",
+        rpc_used=True,
+    )
+    text = format_status_summary(leaked)
+    assert "Status: fail-closed (not confirmed)" in text
+    assert "Confirmation: confirmed" not in text
+
+
+def test_status_fail_closed_on_malformed_result_object():
+    def fake(_url, _method, _params, _timeout):
+        return {"result": ["not-an-object"]}
+
+    receipt = status(SIG, rpc_url="https://rpc.example.test", rpc_post=fake)
+    assert receipt.fail_closed is True
+
+
+def test_status_fail_closed_on_empty_value_list():
+    def fake(_url, _method, _params, _timeout):
+        return {"result": {"value": []}}
+
+    receipt = status(SIG, rpc_url="https://rpc.example.test", rpc_post=fake)
+    assert receipt.fail_closed is True
     def fake(_url, _method, _params, _timeout):
         return {"result": {"value": [{"confirmationStatus": "finalized", "slot": 99, "err": None}]}}
 

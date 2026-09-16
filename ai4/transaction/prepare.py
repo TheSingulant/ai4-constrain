@@ -1,7 +1,9 @@
-"""Prepare a v1 SOL transfer: validate, firewall, unsigned handoff."""
+"""Prepare a v1 SOL transfer: validate, firewall, bind unsigned handoff."""
 
 from __future__ import annotations
 
+from ai4.constrain.report import DecisionReport
+from ai4.transaction.binding import verify_approved_handoff
 from ai4.transaction.errors import TransactionControlError, TransactionValidationError
 from ai4.transaction.firewall import EvaluateFn, run_firewall
 from ai4.transaction.handoff import handoff_uris_for_intent
@@ -13,6 +15,7 @@ from ai4.transaction.types import (
     TransferConfig,
     TransferIntent,
     UnsignedPayload,
+    approved_binding_from_intent,
     format_sol_amount,
 )
 from ai4.transaction.validate import validate_transfer_intent
@@ -98,6 +101,42 @@ def _unsigned_payload(intent: NormalizedIntent) -> UnsignedPayload:
     )
 
 
+def _deny(
+    *,
+    reasons: tuple[str, ...],
+    fee_status: str,
+    fee_note: str,
+    intent: NormalizedIntent | None = None,
+    report: DecisionReport | None = None,
+) -> PrepareResult:
+    denied = PrepareResult(
+        decision=Decision.DENY,
+        reasons=reasons,
+        summary="",
+        intent=intent,
+        report=report,
+        unsigned_payload=None,
+        handoff_uri=None,
+        phantom_browse_uri=None,
+        fee_status=fee_status,
+        fee_note=fee_note,
+        approved_binding=None,
+    )
+    return PrepareResult(
+        decision=Decision.DENY,
+        reasons=denied.reasons,
+        summary=format_prepare_summary(denied),
+        intent=intent,
+        report=report,
+        unsigned_payload=None,
+        handoff_uri=None,
+        phantom_browse_uri=None,
+        fee_status=fee_status,
+        fee_note=fee_note,
+        approved_binding=None,
+    )
+
+
 def format_prepare_summary(result: PrepareResult) -> str:
     lines = [f"Decision: {result.decision.value}"]
     if result.intent is not None:
@@ -105,7 +144,7 @@ def format_prepare_summary(result: PrepareResult) -> str:
             [
                 f"Network: Solana {result.intent.network.value}",
                 f"Asset: {result.intent.asset.value}",
-                "Action: transfer",
+                f"Action: {result.intent.action}",
                 f"Amount: {format_sol_amount(result.intent.amount)} SOL",
                 f"Destination: {result.intent.destination}",
             ]
@@ -117,10 +156,21 @@ def format_prepare_summary(result: PrepareResult) -> str:
         lines.append("Reasons: " + "; ".join(result.reasons))
     if result.decision is Decision.ALLOW:
         lines.append("Prepare complete. Sign in your wallet. Later: status plus explorer.")
+        if result.approved_binding is not None:
+            lines.append(
+                "Approved binding: "
+                f"{result.approved_binding.action} {result.approved_binding.amount_sol} "
+                f"{result.approved_binding.asset} on Solana {result.approved_binding.network} "
+                f"to {result.approved_binding.destination}."
+            )
         if result.handoff_uri:
             lines.append(f"Wallet handoff URI: {result.handoff_uri}")
         if result.phantom_browse_uri:
             lines.append(f"Phantom browse URI: {result.phantom_browse_uri}")
+        lines.append(
+            "Wallet cluster is a user setting. The URI records ai4-network for binding; "
+            "confirm the wallet is on the same Solana cluster before you sign."
+        )
     else:
         lines.append("Denied. No unsigned payload and no wallet handoff.")
     return "\n".join(lines)
@@ -135,9 +185,10 @@ def prepare_transfer(
     rpc_post: RpcPost | None = None,
     timeout_s: float = 10.0,
 ) -> PrepareResult:
-    """Validate, run the firewall, and on ALLOW emit an unsigned handoff.
+    """Validate, run the firewall, and on ALLOW emit a bound unsigned handoff.
 
     On DENY, return the DecisionReport (when constrain ran) and reasons only.
+    Handoff URIs and unsigned payloads are never set on DENY.
     """
 
     cfg = config or TransferConfig()
@@ -150,21 +201,8 @@ def prepare_transfer(
     try:
         normalized = validate_transfer_intent(intent, config=cfg)
     except TransactionValidationError as exc:
-        denied = PrepareResult(
-            decision=Decision.DENY,
+        return _deny(
             reasons=exc.reasons,
-            summary="",
-            intent=None,
-            report=None,
-            fee_status=fee_status,
-            fee_note=fee_note,
-        )
-        return PrepareResult(
-            decision=denied.decision,
-            reasons=denied.reasons,
-            summary=format_prepare_summary(denied),
-            intent=None,
-            report=None,
             fee_status=fee_status,
             fee_note=fee_note,
         )
@@ -176,66 +214,44 @@ def prepare_transfer(
                 resolved_rpc, rpc_post=poster, timeout_s=timeout_s
             )
         except TransactionControlError as exc:
-            denied = PrepareResult(
-                decision=Decision.DENY,
+            return _deny(
                 reasons=exc.reasons,
-                summary="",
                 intent=normalized,
-                report=None,
                 fee_status="rpc_fail_closed",
                 fee_note="fee or chain state could not be verified; fail closed",
-            )
-            return PrepareResult(
-                decision=denied.decision,
-                reasons=denied.reasons,
-                summary=format_prepare_summary(denied),
-                intent=normalized,
-                report=None,
-                fee_status=denied.fee_status,
-                fee_note=denied.fee_note,
             )
         except Exception as exc:
-            denied = PrepareResult(
-                decision=Decision.DENY,
+            return _deny(
                 reasons=(f"RPC failed closed: {exc}",),
-                summary="",
                 intent=normalized,
-                report=None,
                 fee_status="rpc_fail_closed",
                 fee_note="fee or chain state could not be verified; fail closed",
-            )
-            return PrepareResult(
-                decision=denied.decision,
-                reasons=denied.reasons,
-                summary=format_prepare_summary(denied),
-                intent=normalized,
-                report=None,
-                fee_status=denied.fee_status,
-                fee_note=denied.fee_note,
             )
 
     firewall = run_firewall(normalized, config=cfg, evaluate_fn=evaluate_fn)
     if firewall.decision is not Decision.ALLOW:
-        denied = PrepareResult(
-            decision=Decision.DENY,
+        return _deny(
             reasons=firewall.reasons,
-            summary="",
-            intent=normalized,
-            report=firewall.report,
-            fee_status=fee_status,
-            fee_note=fee_note,
-        )
-        return PrepareResult(
-            decision=denied.decision,
-            reasons=denied.reasons,
-            summary=format_prepare_summary(denied),
             intent=normalized,
             report=firewall.report,
             fee_status=fee_status,
             fee_note=fee_note,
         )
 
+    # Binding is enforced here, not inferred from DecisionReport prose.
     pay_uri, phantom_uri = handoff_uris_for_intent(normalized)
+    try:
+        verify_approved_handoff(pay_uri, phantom_uri, normalized)
+    except TransactionControlError as exc:
+        return _deny(
+            reasons=exc.reasons,
+            intent=normalized,
+            report=firewall.report,
+            fee_status=fee_status,
+            fee_note=fee_note,
+        )
+
+    binding = approved_binding_from_intent(normalized)
     allowed = PrepareResult(
         decision=Decision.ALLOW,
         reasons=firewall.reasons,
@@ -247,9 +263,10 @@ def prepare_transfer(
         phantom_browse_uri=phantom_uri,
         fee_status=fee_status,
         fee_note=fee_note,
+        approved_binding=binding,
     )
     return PrepareResult(
-        decision=allowed.decision,
+        decision=Decision.ALLOW,
         reasons=allowed.reasons,
         summary=format_prepare_summary(allowed),
         intent=normalized,
@@ -259,4 +276,5 @@ def prepare_transfer(
         phantom_browse_uri=phantom_uri,
         fee_status=fee_status,
         fee_note=fee_note,
+        approved_binding=binding,
     )

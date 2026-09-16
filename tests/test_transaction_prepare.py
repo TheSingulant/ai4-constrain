@@ -33,6 +33,13 @@ def test_allow_emits_unsigned_stub_and_handoff():
     assert result.handoff_uri is not None
     assert result.handoff_uri.startswith("solana:" + DEST)
     assert "amount=0.25" in result.handoff_uri
+    assert "ai4-network=mainnet-beta" in result.handoff_uri
+    assert result.approved_binding is not None
+    assert result.approved_binding.network == "mainnet-beta"
+    assert result.approved_binding.destination == DEST
+    assert result.approved_binding.lamports == 250_000_000
+    assert result.approved_binding.action == "transfer"
+    assert result.approved_binding.sha256()
     assert result.phantom_browse_uri is not None
     assert result.phantom_browse_uri.startswith("https://phantom.app/ul/browse/")
     assert "AI4 does not hold keys or assets" in result.summary
@@ -49,6 +56,7 @@ def test_deny_returns_report_only():
     assert result.unsigned_payload is None
     assert result.handoff_uri is None
     assert result.phantom_browse_uri is None
+    assert result.approved_binding is None
     assert "Denied" in result.summary
 
 
@@ -57,6 +65,8 @@ def test_deny_custody_has_no_report_and_no_handoff():
     assert result.decision is Decision.DENY
     assert result.report is None
     assert result.unsigned_payload is None
+    assert result.handoff_uri is None
+    assert result.phantom_browse_uri is None
 
 
 def test_deny_over_cap_before_firewall():

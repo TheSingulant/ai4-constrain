@@ -7,10 +7,13 @@ from decimal import Decimal, InvalidOperation
 from ai4.transaction._base58 import b58decode
 from ai4.transaction.errors import TransactionValidationError
 from ai4.transaction.types import (
+    ALLOWED_ACTIONS,
     ALLOWED_ASSETS,
     ALLOWED_NETWORKS,
+    ACTION_TRANSFER,
     Asset,
     DEFAULT_MAX_AMOUNT_SOL,
+    DESTINATION_FORBIDDEN_CHARS,
     LAMPORTS_PER_SOL,
     MAX_LAMPORTS,
     NETWORK_ALIASES,
@@ -76,6 +79,23 @@ def parse_asset(value: Asset | str) -> Asset:
     return Asset.SOL
 
 
+def parse_action(value: str | None) -> str:
+    if value is None:
+        return ACTION_TRANSFER
+    if not isinstance(value, str) or not value.strip():
+        raise TransactionValidationError(
+            "action is required",
+            reasons=("action is required",),
+        )
+    action = value.strip().lower()
+    if action not in ALLOWED_ACTIONS:
+        raise TransactionValidationError(
+            "action is not transfer",
+            reasons=(f"unsupported action: {value.strip()!r}; v1 allows transfer only",),
+        )
+    return ACTION_TRANSFER
+
+
 def parse_max_amount(value: Decimal | str | int | float) -> Decimal:
     return _parse_positive_sol(value, field_name="max_amount")
 
@@ -136,6 +156,11 @@ def validate_solana_address(value: str) -> str:
             reasons=("destination is required",),
         )
     address = value.strip()
+    if any(char in address for char in DESTINATION_FORBIDDEN_CHARS):
+        raise TransactionValidationError(
+            "destination contains URI delimiter characters",
+            reasons=("destination contains ?, &, #, or /; refusing query injection",),
+        )
     if address.startswith("0x"):
         raise TransactionValidationError(
             "destination is not a Solana address",
@@ -207,6 +232,7 @@ def validate_transfer_intent(
 
     cfg = config or TransferConfig()
     reject_custody_flags(intent)
+    action = parse_action(intent.action)
     network = parse_network(intent.network)
     asset = parse_asset(intent.asset)
     amount = parse_sol_amount(intent.amount)
@@ -227,11 +253,13 @@ def validate_transfer_intent(
         amount=amount,
         destination=destination,
         lamports=lamports,
+        action=action,
     )
 
 
 __all__ = [
     "DEFAULT_MAX_AMOUNT_SOL",
+    "parse_action",
     "parse_asset",
     "parse_max_amount",
     "parse_network",

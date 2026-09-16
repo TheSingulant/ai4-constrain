@@ -130,6 +130,7 @@ def run_firewall(
         "constrain_mode": report.mode,
         "network": normalized.network.value,
         "asset": normalized.asset.value,
+        "action": normalized.action,
     }
     return FirewallResult(
         decision=decision,

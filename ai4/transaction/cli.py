@@ -14,7 +14,7 @@ from decimal import Decimal
 
 from ai4.transaction.errors import TransactionControlError, TransactionValidationError
 from ai4.transaction.prepare import prepare_transfer
-from ai4.transaction.status import status
+from ai4.transaction.status import format_status_summary, status
 from ai4.transaction.types import Decision, TransferConfig, TransferIntent
 from ai4.transaction.validate import parse_max_amount
 
@@ -106,21 +106,7 @@ def _run_prepare(args: argparse.Namespace) -> int:
 def _run_status(args: argparse.Namespace) -> int:
     receipt = status(args.signature, rpc_url=args.rpc_url, network=args.network)
     _print_json(receipt.to_dict())
-    lines = [
-        f"Signature: {receipt.signature}",
-        f"Fail closed: {receipt.fail_closed}",
-    ]
-    if receipt.confirmation_status:
-        lines.append(f"Confirmation: {receipt.confirmation_status}")
-    if receipt.slot is not None:
-        lines.append(f"Slot: {receipt.slot}")
-    if receipt.err is not None:
-        lines.append(f"On-chain error: {receipt.err}")
-    if receipt.explorer_url:
-        lines.append(f"Explorer: {receipt.explorer_url}")
-    if receipt.reasons:
-        lines.append("Reasons: " + "; ".join(receipt.reasons))
-    print("\n".join(lines), file=sys.stderr)
+    print(format_status_summary(receipt), file=sys.stderr)
     return EXIT_FAIL if receipt.fail_closed else EXIT_OK
 
 

@@ -35,6 +35,7 @@ def test_happy_path_normalizes_intent():
     normalized = validate_transfer_intent(_intent())
     assert normalized.network.value == "mainnet-beta"
     assert normalized.asset.value == "SOL"
+    assert normalized.action == "transfer"
     assert normalized.amount == Decimal("0.1")
     assert normalized.lamports == 100_000_000
     assert normalized.destination == DEST
@@ -130,6 +131,18 @@ def test_deny_server_broadcast():
     with pytest.raises(TransactionValidationError) as exc:
         validate_transfer_intent(_intent(server_broadcast=True))
     assert any("server broadcast" in item for item in exc.value.reasons)
+
+
+def test_deny_unsupported_action():
+    with pytest.raises(TransactionValidationError) as exc:
+        validate_transfer_intent(_intent(action="swap"))
+    assert "unsupported action" in exc.value.reasons[0]
+
+
+def test_deny_destination_query_injection_chars():
+    with pytest.raises(TransactionValidationError) as exc:
+        validate_solana_address(DEST + "?amount=9")
+    assert "query injection" in exc.value.reasons[0]
 
 
 def test_signature_must_be_64_bytes():

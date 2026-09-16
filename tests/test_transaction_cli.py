@@ -30,6 +30,9 @@ def test_cli_prepare_allow(capsys):
     assert payload["decision"] == "ALLOW"
     assert payload["decision_report"]["decision"] == "accept"
     assert payload["handoff_uri"].startswith("solana:")
+    assert "ai4-network=devnet" in payload["handoff_uri"]
+    assert payload["approved_binding"]["network"] == "devnet"
+    assert payload["unsigned_payload"]["kind"] == "solana_system_transfer_stub"
     assert "AI4 does not hold keys or assets" in captured.err
     assert "Decision: ALLOW" in captured.err
 
@@ -83,6 +86,8 @@ def test_cli_status_fail_closed_without_rpc(capsys, monkeypatch):
     assert code == EXIT_FAIL
     assert payload["fail_closed"] is True
     assert "no Solana RPC URL" in captured.err
+    assert "fail-closed (not confirmed)" in captured.err
+    assert "Confirmation: confirmed" not in captured.err
 
 
 def test_cli_usage_error_is_nonzero(capsys):

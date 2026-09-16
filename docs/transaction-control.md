@@ -49,8 +49,9 @@ mint is documented below and is not implemented here.
   cap, SOL-only, reject custody / server-sign / server-broadcast flags)
 - Transaction Firewall: structured proposal → `ai4.constrain.evaluate` →
   map `accept` to ALLOW; `refuse` / `revise` / timeout / config error to DENY
-- `prepare_transfer`: validate → firewall → on ALLOW, human summary plus
-  unsigned payload stub plus Solana Pay / Phantom browse URI
+- `prepare_transfer`: validate → firewall → on ALLOW, bind handoff from the same
+  `NormalizedIntent` (URI must parse back to destination, amount, cluster)
+  then emit unsigned stub plus Solana Pay / Phantom browse URI
 - `status`: JSON-RPC poll only when an RPC URL is supplied
 - CLI `ai4-transaction`
 - Audit-log **stub interface only** (`AuditLogService` / `AuditLogSink`)
@@ -104,8 +105,9 @@ Map:
 | `null` (timeout / execution) | DENY |
 | missing report / exception | DENY |
 
-ALLOW emits an unsigned stub and handoff URIs. DENY returns the report (when
-one exists) and reasons only.
+ALLOW emits an unsigned stub and handoff URIs only after URI binding
+verification. DENY returns the report (when one exists) and reasons only.
+DENY never sets `handoff_uri`, `phantom_browse_uri`, or `unsigned_payload`.
 
 ## How Telegram will call the same module later
 
@@ -119,7 +121,9 @@ result = prepare_transfer(
     config=TransferConfig(max_amount_sol="1"),
 )
 if result.allowed:
-    # show result.summary; offer result.handoff_uri / result.phantom_browse_uri
+    # show result.summary and result.approved_binding.network
+    # offer result.handoff_uri / result.phantom_browse_uri
+    # remind the user to confirm the wallet cluster matches approved_binding.network
     pass
 # later
 receipt = status(signature, rpc_url=rpc, network="mainnet-beta")
@@ -135,10 +139,11 @@ This scaffold does **not** implement Phantom `/ul/v1/signAndSendTransaction`
 
 1. **Solana Pay transfer request** (wallet-agnostic; Phantom handles it):
 
-   `solana:<destination>?amount=<SOL>&label=...&message=...`
+   `solana:<destination>?amount=<SOL>&label=...&message=...&ai4-network=<cluster>`
 
    See https://docs.solanapay.com/spec . Amount is SOL, not lamports. No
-   `spl-token` field.
+   `spl-token` field. `label` and `message` include the approved cluster
+   (for example `AI4 transfer on Solana mainnet-beta`).
 
 2. **Phantom browse Universal Link** wrapping that URI:
 
@@ -147,6 +152,36 @@ This scaffold does **not** implement Phantom `/ul/v1/signAndSendTransaction`
    See https://docs.phantom.com/phantom-deeplinks/deeplinks-ios-and-android
 
 The user reviews and signs in their wallet. AI4 does not hold keys or assets.
+`UnsignedPayload` remains an honest stub (`solana_system_transfer_stub`), not
+a serialized unsigned Solana transaction.
+
+## Decision-to-handoff binding
+
+`ai4.constrain.evaluate` scores proposal **prose**. `DecisionReport` fields are
+not structured transfer parameters. Binding is enforced in `ai4.transaction`
+after firewall ALLOW:
+
+1. Handoff URIs are built only from the same frozen `NormalizedIntent` that
+   was proposed (network, asset, action=transfer, amount, destination).
+2. The Solana Pay URI is parsed back before ALLOW is returned. Verification
+   requires scheme `solana`, recipient == destination, amount Decimal and
+   lamports match, no `spl-token`, and `ai4-network=<approved cluster>`.
+   Label and message must include that cluster. Mismatch is DENY, no handoff.
+3. `PrepareResult.approved_binding` stores those structured fields plus a
+   sha256 of the canonical payload. Telegram/CLI must display network from
+   this binding (and the human summary), not from wallet state.
+
+**What is structurally bound:** destination, amount (SOL and lamports), asset
+SOL, action transfer, and the `ai4-network` cluster marker on the URI.
+
+**What is not cryptographically locked:** Solana Pay has no official cluster
+field. Wallets ignore `ai4-network`. The **wallet cluster remains a user
+setting**. A user can still sign on the wrong cluster. Residual risk is
+disclosed in the summary. This parameter is for binding integrity and audit,
+not a chain lock.
+
+If URI verification fails, the product decision is DENY and no URI is
+returned.
 
 ## Status / receipt
 
@@ -154,9 +189,10 @@ The user reviews and signs in their wallet. AI4 does not hold keys or assets.
 when `rpc_url` or `AI4_SOLANA_RPC_URL` is set. `.env.example` documents the
 name as an empty optional. No hardcoded RPC and no credentials.
 
-Known confirmation values: `processed`, `confirmed`, `finalized`. Null
-status, transport failure, or unknown shape is fail closed. A found on-chain
-`err` is a real result, not an ambiguous miss.
+Known confirmation values: `processed` (pending-like, not yet confirmed),
+`confirmed`, `finalized`. Null status, transport failure, or unknown shape is
+fail closed. A found on-chain `err` is a real result, not an ambiguous miss.
+CLI never labels a fail-closed receipt as confirmed.
 
 Explorer links are optional and only when `--network` is supplied.
 

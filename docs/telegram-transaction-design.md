@@ -36,6 +36,11 @@ firewall on ALLOW-looking input.
 
 ## Confirmation screen copy
 
+The host must show **Network** from `PrepareResult.approved_binding` (same
+cluster recorded as `ai4-network` on the URI). Solana Pay has no official
+cluster field; the wallet cluster remains a user setting. Tell the user to
+confirm the wallet is on that Solana cluster before signing.
+
 Use ordinary product language. Fill fields from `PrepareResult` after a
 successful prepare, or from the draft intent before prepare.
 

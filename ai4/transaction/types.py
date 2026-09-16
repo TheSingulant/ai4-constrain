@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
@@ -33,9 +35,12 @@ class Decision(str, Enum):
 
 ALLOWED_NETWORKS = frozenset(Network)
 ALLOWED_ASSETS = frozenset(Asset)
+ACTION_TRANSFER = "transfer"
+ALLOWED_ACTIONS = frozenset({ACTION_TRANSFER})
 DEFAULT_MAX_AMOUNT_SOL = Decimal("1")
 LAMPORTS_PER_SOL = Decimal("1000000000")
 MAX_LAMPORTS = 2**64 - 1
+DESTINATION_FORBIDDEN_CHARS = frozenset("?&#/")
 
 NETWORK_ALIASES = {
     "mainnet-beta": Network.MAINNET_BETA,
@@ -60,6 +65,7 @@ class TransferIntent:
     asset: Asset | str
     amount: Decimal | str | int | float
     destination: str
+    action: str = ACTION_TRANSFER
     request_custody: bool = False
     server_sign: bool = False
     server_broadcast: bool = False
@@ -80,6 +86,7 @@ class NormalizedIntent:
     amount: Decimal
     destination: str
     lamports: int
+    action: str = ACTION_TRANSFER
 
 
 @dataclass(frozen=True)
@@ -110,6 +117,48 @@ class UnsignedPayload:
 
 
 @dataclass(frozen=True)
+class ApprovedBinding:
+    """Structured params bound into the handoff. Not a wallet cluster lock."""
+
+    network: str
+    asset: str
+    action: str
+    amount_sol: str
+    lamports: int
+    destination: str
+
+    def canonical_payload(self) -> dict[str, Any]:
+        return {
+            "network": self.network,
+            "asset": self.asset,
+            "action": self.action,
+            "amount_sol": self.amount_sol,
+            "lamports": self.lamports,
+            "destination": self.destination,
+        }
+
+    def sha256(self) -> str:
+        blob = json.dumps(self.canonical_payload(), sort_keys=True, separators=(",", ":")).encode("utf-8")
+        return hashlib.sha256(blob).hexdigest()
+
+    def to_dict(self) -> dict[str, Any]:
+        payload = self.canonical_payload()
+        payload["sha256"] = self.sha256()
+        return payload
+
+
+def approved_binding_from_intent(intent: NormalizedIntent) -> ApprovedBinding:
+    return ApprovedBinding(
+        network=intent.network.value,
+        asset=intent.asset.value,
+        action=intent.action,
+        amount_sol=format_sol_amount(intent.amount),
+        lamports=intent.lamports,
+        destination=intent.destination,
+    )
+
+
+@dataclass(frozen=True)
 class PrepareResult:
     decision: Decision
     reasons: tuple[str, ...]
@@ -121,6 +170,21 @@ class PrepareResult:
     phantom_browse_uri: str | None = None
     fee_status: str = "unverified_no_rpc"
     fee_note: str = ""
+    approved_binding: ApprovedBinding | None = None
+
+    def __post_init__(self) -> None:
+        if self.decision is Decision.DENY:
+            if (
+                self.handoff_uri is not None
+                or self.phantom_browse_uri is not None
+                or self.unsigned_payload is not None
+            ):
+                raise ValueError("DENY PrepareResult must not carry a handoff or unsigned payload")
+        elif self.decision is Decision.ALLOW:
+            if not self.handoff_uri or not self.phantom_browse_uri or self.unsigned_payload is None:
+                raise ValueError("ALLOW PrepareResult must carry handoff URIs and an unsigned stub")
+            if self.approved_binding is None:
+                raise ValueError("ALLOW PrepareResult must carry approved_binding")
 
     @property
     def allowed(self) -> bool:
@@ -136,10 +200,12 @@ class PrepareResult:
             else {
                 "network": self.intent.network.value,
                 "asset": self.intent.asset.value,
+                "action": self.intent.action,
                 "amount": format_sol_amount(self.intent.amount),
                 "destination": self.intent.destination,
                 "lamports": self.intent.lamports,
             },
+            "approved_binding": None if self.approved_binding is None else self.approved_binding.to_dict(),
             "decision_report": None if self.report is None else self.report.to_dict(),
             "unsigned_payload": None
             if self.unsigned_payload is None

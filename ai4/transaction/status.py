@@ -10,6 +10,31 @@ from ai4.transaction.validate import parse_network, validate_solana_signature
 KNOWN_CONFIRMATION = {"processed", "confirmed", "finalized"}
 
 
+def format_status_summary(receipt: Receipt) -> str:
+    """Human status text. Fail-closed receipts are never labeled confirmed."""
+
+    lines = [f"Signature: {receipt.signature}", f"Fail closed: {receipt.fail_closed}"]
+    if receipt.fail_closed:
+        lines.append("Status: fail-closed (not confirmed)")
+    elif receipt.confirmation_status == "processed":
+        lines.append("Confirmation: processed (pending-like; not yet confirmed)")
+    elif receipt.confirmation_status == "confirmed":
+        lines.append("Confirmation: confirmed")
+    elif receipt.confirmation_status == "finalized":
+        lines.append("Confirmation: finalized")
+    elif receipt.confirmation_status:
+        lines.append(f"Confirmation: {receipt.confirmation_status}")
+    if receipt.slot is not None:
+        lines.append(f"Slot: {receipt.slot}")
+    if receipt.err is not None:
+        lines.append(f"On-chain error: {receipt.err}")
+    if receipt.explorer_url:
+        lines.append(f"Explorer: {receipt.explorer_url}")
+    if receipt.reasons:
+        lines.append("Reasons: " + "; ".join(receipt.reasons))
+    return "\n".join(lines)
+
+
 def _explorer_url(signature: str, network: Network | None) -> str | None:
     if network is None:
         return None

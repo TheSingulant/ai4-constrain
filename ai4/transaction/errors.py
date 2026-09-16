@@ -8,7 +8,9 @@ class TransactionControlError(Exception):
 
     def __init__(self, message: str, *, reasons: tuple[str, ...] = ()) -> None:
         super().__init__(message)
-        self.reasons = reasons or (message,)
+        if isinstance(reasons, str):
+            reasons = (reasons,)
+        self.reasons = tuple(reasons) if reasons else (message,)
 
 
 class TransactionValidationError(TransactionControlError):

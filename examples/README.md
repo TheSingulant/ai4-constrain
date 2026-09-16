@@ -11,7 +11,9 @@ python -m ai4.constrain session demo
 
 See `examples/constrain/README.md`.
 
-Solana DevNet E2E proof (scaffold; version remains 0.7.0; no signing):
+Solana DevNet E2E proof (scaffold; version remains 0.7.0). Live owner
+Phantom signature evidence: `examples/transaction/LIVE_EVIDENCE.md`.
+Not a PyPI transaction claim; not Telegram.
 
 ```bash
 python examples/transaction/devnet_e2e.py --help

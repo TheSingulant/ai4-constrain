@@ -9,7 +9,8 @@ All notable public releases of `ai4-constrain` are listed here.
 - `ai4.transaction` scaffold: Solana native SOL transfer validate / firewall / prepare / status / CLI
 - Decision-to-handoff binding: `ai4-network` query param, URI parse-back before ALLOW, `approved_binding` on `PrepareResult`
 - Solana **DevNet-only** E2E proof harness (`examples/transaction/devnet_e2e.py`, `ai4.transaction.receipt.AI4Receipt`): tiny SOL cap (≤ 0.01), forced `network=devnet`, user-wallet signing, `status()` poll, structured receipt
-- Desktop Phantom **extension** handoff: committed HTTPS HTML (`examples/transaction/live_proof/fe30e76a_devnet_handoff.html`) plus injected `window.phantom.solana` (`signAndSendTransaction`). Owner click-path is the GitHack HTML MIME URL for that commit; jsDelivr currently serves the same file as `text/plain`. Phantom `ul/browse` Universal Link is labeled **MOBILE_ONLY**. `http://127.0.0.1` is an optional offline fallback.
+- Desktop Phantom **extension** handoff: committed HTTPS HTML (`examples/transaction/live_proof/fe30e76a_devnet_handoff.html`) plus injected `window.phantom.solana` (`signAndSendTransaction`). Owner click-path is GitHub Pages / GitHack HTML MIME; jsDelivr currently serves the same file as `text/plain`. Phantom `ul/browse` Universal Link is labeled **MOBILE_ONLY**. `http://127.0.0.1` is an optional offline fallback.
+- Live Solana DevNet E2E completed with an owner Phantom signature (self-transfer 0.001 SOL, `finalized`); evidence in `examples/transaction/LIVE_EVIDENCE.md`. Scaffold only; version remains 0.7.0; not a PyPI claim; not Telegram.
 - `docs/transaction-control.md`, `docs/transaction-devnet-e2e.md`, and `docs/telegram-transaction-design.md`
 - Optional empty `AI4_SOLANA_RPC_URL=` in `.env.example`
 - Console script `ai4-transaction` (feature branch only; package version remains 0.7.0)

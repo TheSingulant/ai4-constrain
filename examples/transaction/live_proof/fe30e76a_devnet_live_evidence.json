@@ -1,0 +1,147 @@
+{
+  "title": "AI4 transaction DevNet live E2E evidence (public fields only)",
+  "package_version": "0.7.0",
+  "scaffold": true,
+  "pypi_transaction_claim": false,
+  "telegram": false,
+  "ai4_signed": false,
+  "ai4_custody": false,
+  "wallet_signed": true,
+  "attribution": "Prepared and constrained by AI4; signed and broadcast by the user's wallet.",
+  "pr": "https://github.com/TheSingulant/ai4-constrain/pull/10",
+  "branch": "cursor/transaction-devnet-e2e-11d2",
+  "commits": {
+    "prepare_harness": "c2b5fb20c3e5aaa7e6b54964e4324f8ba9e32778",
+    "https_handoff_html": "317a0f6f1b90bc2730e9bb8132d895f88c375046",
+    "https_githack_docs": "b5e4da9beaddd169125a3158c890c43ff0d0613d",
+    "observe_recorded_against": "b5e4da9beaddd169125a3158c890c43ff0d0613d"
+  },
+  "observed_at_utc": "2026-09-16T17:47:52.454760Z",
+  "rpc": {
+    "url": "https://api.devnet.solana.com",
+    "credentials": null,
+    "genesis_hash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+    "genesis_is_devnet": true
+  },
+  "approved_binding": {
+    "network": "devnet",
+    "asset": "SOL",
+    "action": "transfer",
+    "amount_sol": "0.001",
+    "lamports": 1000000,
+    "destination": "4WDYrTNTit9m7kU5y2LWCfvf35pQo9vbjPTDyiDHEq9e",
+    "sha256": "fe30e76ac25e766f37d4f719caaa7efa7b2603afbf388dbca609154258a37da0"
+  },
+  "decision_report_summary": {
+    "product_decision": "ALLOW",
+    "constrain_decision": "accept",
+    "mode": "evaluate_only",
+    "outcome_kind": "constraint",
+    "decision_reason": "all shards passed",
+    "terminal": null,
+    "reasons": [
+      "constrain decision is accept"
+    ]
+  },
+  "handoff": {
+    "solana_pay_uri": "solana:4WDYrTNTit9m7kU5y2LWCfvf35pQo9vbjPTDyiDHEq9e?amount=0.001&label=AI4+transfer+on+Solana+devnet&message=Unsigned+SOL+transfer+on+Solana+devnet.+Review+and+sign+in+your+wallet.+Wallet+cluster+is+a+user+setting.&ai4-network=devnet",
+    "phantom_browse": "MOBILE_ONLY",
+    "pages_https": "https://thesingulant.github.io/ai4-constrain/live-proof/fe30e76a/",
+    "githack_https": "https://rawcdn.githack.com/TheSingulant/ai4-constrain/b5e4da9beaddd169125a3158c890c43ff0d0613d/examples/transaction/live_proof/fe30e76a_devnet_handoff.html",
+    "github_blob": "https://github.com/TheSingulant/ai4-constrain/blob/b5e4da9beaddd169125a3158c890c43ff0d0613d/examples/transaction/live_proof/fe30e76a_devnet_handoff.html",
+    "committed_html": "examples/transaction/live_proof/fe30e76a_devnet_handoff.html",
+    "localhost_127": "optional offline/dev fallback only"
+  },
+  "pages_binding_integrity": {
+    "url": "https://thesingulant.github.io/ai4-constrain/live-proof/fe30e76a/",
+    "content_type": "text/html; charset=utf-8",
+    "bytes": 6943,
+    "html_sha256": "32b54abc101003fc2c92746617dee7ca0d695aa6446372d26270775fec6d55d1",
+    "matches_committed_html": true,
+    "embeds_destination": true,
+    "embeds_lamports": true,
+    "embeds_binding_sha256": true,
+    "phantom_method": "signAndSendTransaction",
+    "uses_AI4_destination": true,
+    "uses_AI4_lamports": true,
+    "unbound_mutation": false
+  },
+  "signature": "4KAtBNHVJQBkAHoGGJCDDRDr1A9Rha2PSHZ5D8mA8cVKXZiyjXJmoRWUA4Y2HqEY1YKi12LmDRSJMdjRDN4dxX9E",
+  "status_observation": {
+    "signature": "4KAtBNHVJQBkAHoGGJCDDRDr1A9Rha2PSHZ5D8mA8cVKXZiyjXJmoRWUA4Y2HqEY1YKi12LmDRSJMdjRDN4dxX9E",
+    "fail_closed": false,
+    "reasons": [],
+    "confirmation_status": "finalized",
+    "slot": 499404925,
+    "err": null,
+    "explorer_url": "https://explorer.solana.com/tx/4KAtBNHVJQBkAHoGGJCDDRDr1A9Rha2PSHZ5D8mA8cVKXZiyjXJmoRWUA4Y2HqEY1YKi12LmDRSJMdjRDN4dxX9E?cluster=devnet",
+    "network": "devnet",
+    "rpc_used": true
+  },
+  "on_chain_jsonParsed": {
+    "method": "getTransaction encoding=jsonParsed",
+    "slot": 499404925,
+    "block_time_unix": 1789580565,
+    "block_time_utc": "2026-09-16T17:42:45Z",
+    "err": null,
+    "fee_lamports": 80000,
+    "program": "system",
+    "type": "transfer",
+    "source": "4WDYrTNTit9m7kU5y2LWCfvf35pQo9vbjPTDyiDHEq9e",
+    "destination": "4WDYrTNTit9m7kU5y2LWCfvf35pQo9vbjPTDyiDHEq9e",
+    "lamports": 1000000,
+    "self_transfer": true,
+    "destination_matches_binding": true,
+    "lamports_match_binding": true,
+    "note": "source == destination (self-transfer); still matches approved destination+amount. Fee 80000 lamports."
+  },
+  "explorer_url": "https://explorer.solana.com/tx/4KAtBNHVJQBkAHoGGJCDDRDr1A9Rha2PSHZ5D8mA8cVKXZiyjXJmoRWUA4Y2HqEY1YKi12LmDRSJMdjRDN4dxX9E?cluster=devnet",
+  "receipt": {
+    "network": "devnet",
+    "asset": "SOL",
+    "action": "transfer",
+    "amount": "0.001",
+    "destination": "4WDYrTNTit9m7kU5y2LWCfvf35pQo9vbjPTDyiDHEq9e",
+    "approved_binding_hash": "fe30e76ac25e766f37d4f719caaa7efa7b2603afbf388dbca609154258a37da0",
+    "approved_binding": {
+      "network": "devnet",
+      "asset": "SOL",
+      "action": "transfer",
+      "amount_sol": "0.001",
+      "lamports": 1000000,
+      "destination": "4WDYrTNTit9m7kU5y2LWCfvf35pQo9vbjPTDyiDHEq9e",
+      "sha256": "fe30e76ac25e766f37d4f719caaa7efa7b2603afbf388dbca609154258a37da0"
+    },
+    "decision": "ALLOW",
+    "decision_report_summary": {
+      "product_decision": "ALLOW",
+      "constrain_decision": "accept",
+      "mode": "evaluate_only",
+      "outcome_kind": "constraint",
+      "decision_reason": "all shards passed",
+      "terminal": null,
+      "reasons": [
+        "constrain decision is accept"
+      ]
+    },
+    "decision_report_result": "accept",
+    "signature": "4KAtBNHVJQBkAHoGGJCDDRDr1A9Rha2PSHZ5D8mA8cVKXZiyjXJmoRWUA4Y2HqEY1YKi12LmDRSJMdjRDN4dxX9E",
+    "lifecycle_state": "finalized",
+    "confirmation_status": "finalized",
+    "slot": 499404925,
+    "error": null,
+    "timestamp": "2026-09-16T17:47:52.454760Z",
+    "explorer_url": "https://explorer.solana.com/tx/4KAtBNHVJQBkAHoGGJCDDRDr1A9Rha2PSHZ5D8mA8cVKXZiyjXJmoRWUA4Y2HqEY1YKi12LmDRSJMdjRDN4dxX9E?cluster=devnet",
+    "attribution": "Prepared and constrained by AI4; signed and broadcast by the user's wallet.",
+    "fail_closed": false,
+    "reasons": [
+      "constrain decision is accept"
+    ],
+    "observed_success": true
+  },
+  "residual_risk": [
+    "status() observes signature lifecycle; it does not re-decode the on-chain instruction against the approved binding. Destination and lamports were checked separately via getTransaction jsonParsed.",
+    "ai4-network=devnet is a binding marker. The wallet cluster remains a user setting."
+  ],
+  "keys": "AI4 never received, stored, or processed a seed, private key, or keystore. Owner signed in Phantom."
+}

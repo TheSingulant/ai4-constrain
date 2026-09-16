@@ -27,6 +27,7 @@ Repository = "https://github.com/TheSingulant/ai4-constrain"
 ai4-experiment = "src.main:main"
 ai4-constrain = "ai4.constrain.cli:main"
 ai4-identity = "ai4.identity.resolve.cli:main"
+ai4-transaction = "ai4.transaction.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["src*", "ai4*"]

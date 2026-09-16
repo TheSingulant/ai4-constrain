@@ -2,6 +2,20 @@
 
 All notable public releases of `ai4-constrain` are listed here.
 
+## Unreleased (scaffold, not a PyPI release)
+
+### Added
+
+- `ai4.transaction` scaffold: Solana native SOL transfer validate / firewall / prepare / status / CLI
+- Decision-to-handoff binding: `ai4-network` query param, URI parse-back before ALLOW, `approved_binding` on `PrepareResult`
+- `docs/transaction-control.md` and `docs/telegram-transaction-design.md`
+- Optional empty `AI4_SOLANA_RPC_URL=` in `.env.example`
+- Console script `ai4-transaction` (feature branch only; package version remains 0.7.0)
+
+### Not in this change
+
+- No Telegram deploy, no hosted bot, no server wallet, no mint wrap, no version bump
+
 ## 0.7.0 — 2026-09-14
 
 ### Added

@@ -25,6 +25,8 @@ from urllib.parse import urlparse
 
 from ai4.transaction.desktop_handoff import (
     DEFAULT_HANDOFF_FILENAME,
+    LIVE_PROOF_HTML_REPO_PATH,
+    LIVE_PROOF_SHA256,
     PHANTOM_BROWSE_OWNER_NOTE,
     default_desktop_handoff_path,
     local_http_open_url,
@@ -571,21 +573,37 @@ def print_prepare_artifacts(
     stream.write(f"handoff_uri: {prepare.handoff_uri}\n")
     stream.write(f"phantom_browse_uri (MOBILE_ONLY): {prepare.phantom_browse_uri}\n")
     stream.write(PHANTOM_BROWSE_OWNER_NOTE + "\n")
+    stream.write("=== Desktop handoff (Phantom Chrome extension) ===\n")
+    stream.write(
+        "Owner path: open the committed HTTPS HTML in Chrome (Phantom injects on https).\n"
+    )
+    stream.write(f"committed_html: {LIVE_PROOF_HTML_REPO_PATH}\n")
+    if prepare.approved_binding is not None and prepare.approved_binding.sha256() == LIVE_PROOF_SHA256:
+        stream.write(
+            "This prepare matches the frozen live-proof binding "
+            f"(sha256={LIVE_PROOF_SHA256}).\n"
+        )
+        stream.write(
+            "HTTPS URL (jsDelivr, after this commit is on GitHub): "
+            "https://cdn.jsdelivr.net/gh/TheSingulant/ai4-constrain@<COMMIT_SHA>/"
+            f"{LIVE_PROOF_HTML_REPO_PATH}\n"
+        )
+        stream.write(
+            "GitHub blob (after push): "
+            f"https://github.com/TheSingulant/ai4-constrain/blob/<COMMIT_SHA>/{LIVE_PROOF_HTML_REPO_PATH}\n"
+        )
+    stream.write(
+        "Click \"Approve in Phantom\" (user gesture). Phantom's dialog is the "
+        "signing step. This page does not poll status.\n"
+    )
     if desktop_handoff_path:
         path = Path(desktop_handoff_path)
-        stream.write("=== Desktop handoff (Phantom Chrome extension) ===\n")
-        stream.write(f"desktop_handoff_path: {path}\n")
-        stream.write(f"desktop_handoff_file_uri: {path.resolve().as_uri()}\n")
         stream.write(
-            "Phantom does not inject into file://. Serve on 127.0.0.1 then open in Chrome:\n"
+            "Optional offline/dev fallback only (not the owner HTTPS path):\n"
         )
+        stream.write(f"  generated_html: {path}\n")
         stream.write(f"  {local_http_serve_command(path)}\n")
-        stream.write(f"  open {local_http_open_url(path)}\n")
-        stream.write(
-            "Confirm Phantom is on Devnet. The page sends SystemProgram.transfer with "
-            "the approved destination and lamports via window.phantom.solana."
-            " Paste the public signature back to --signature. AI4 does not hold keys.\n"
-        )
+        stream.write(f"  {local_http_open_url(path)}\n")
     stream.write(
         "Confirm the wallet cluster is Solana DevNet before you sign. "
         "AI4 does not hold keys or assets.\n"

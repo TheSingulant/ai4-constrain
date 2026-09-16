@@ -10,6 +10,8 @@ import pytest
 from ai4.transaction.binding import verify_solana_pay_binding
 from ai4.transaction.desktop_handoff import (
     DEVNET_GENESIS_HASH,
+    LIVE_PROOF_HTML_REPO_PATH,
+    LIVE_PROOF_SHA256,
     PHANTOM_BROWSE_CHANNEL,
     PHANTOM_BROWSE_OWNER_NOTE,
     render_desktop_handoff_html,
@@ -41,6 +43,7 @@ def _live_binding() -> ApprovedBinding:
 def test_live_proof_binding_hash_unchanged():
     assert validate_solana_address(LIVE_DEST) == LIVE_DEST
     assert _live_binding().sha256() == LIVE_HASH
+    assert LIVE_HASH == LIVE_PROOF_SHA256
 
 
 def test_phantom_browse_is_labeled_mobile_only():
@@ -89,7 +92,8 @@ def test_desktop_html_embeds_exact_binding_fields(tmp_path: Path):
     assert "signAndSendTransaction" in html
     assert "window.phantom" in html
     assert DEVNET_GENESIS_HASH in html
-    assert "http://127.0.0.1" in html
+    assert "Approve in Phantom" in html
+    assert "https" in html
     assert "MOBILE_ONLY" in html
     assert uri in html
     path = write_desktop_handoff_html(
@@ -134,6 +138,25 @@ def test_desktop_html_refuses_mainnet_binding():
             rpc_url="https://api.devnet.solana.com",
             handoff_uri="solana:x",
         )
+
+
+def test_committed_https_live_proof_html_bakes_binding():
+    path = Path(__file__).resolve().parents[1] / LIVE_PROOF_HTML_REPO_PATH
+    assert path.is_file()
+    html = path.read_text(encoding="utf-8")
+    assert LIVE_DEST in html
+    assert "1000000" in html
+    assert LIVE_HASH in html
+    assert "devnet" in html
+    assert "Approve in Phantom" in html
+    assert "signAndSendTransaction" in html
+    assert "SystemProgram.transfer" in html
+    assert "<input" not in html.lower()
+    assert 'type="password"' not in html.lower()
+    assert "--private-key" not in html
+    assert "--seed" not in html
+    assert "BEGIN PRIVATE KEY" not in html
+    assert html.count("Approve in Phantom") >= 1
 
 
 def test_desktop_html_refuses_mainnet_rpc_host():

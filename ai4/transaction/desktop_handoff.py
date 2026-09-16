@@ -27,14 +27,37 @@ DEVNET_GENESIS_HASH = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
 WEB3_CDN = "https://unpkg.com/@solana/web3.js@1.98.4/lib/index.iife.min.js"
 DEFAULT_HANDOFF_FILENAME = "ai4_desktop_handoff.html"
 DEFAULT_SERVE_PORT = 8765
+GITHUB_REPO = "TheSingulant/ai4-constrain"
+LIVE_PROOF_DESTINATION = "4WDYrTNTit9m7kU5y2LWCfvf35pQo9vbjPTDyiDHEq9e"
+LIVE_PROOF_AMOUNT_SOL = "0.001"
+LIVE_PROOF_LAMPORTS = 1_000_000
+LIVE_PROOF_SHA256 = "fe30e76ac25e766f37d4f719caaa7efa7b2603afbf388dbca609154258a37da0"
+LIVE_PROOF_RPC_URL = "https://api.devnet.solana.com"
+LIVE_PROOF_HTML_REPO_PATH = "examples/transaction/live_proof/fe30e76a_devnet_handoff.html"
 
 PHANTOM_BROWSE_CHANNEL = "mobile_only"
 PHANTOM_BROWSE_OWNER_NOTE = (
     "MOBILE_ONLY: https://phantom.app/ul/browse/<url> is a Phantom iOS/Android "
     "in-app browser Universal Link. The Chrome/desktop extension does not consume "
     "it and commonly redirects to phantom.com/download while the extension stays idle. "
-    "Desktop owners must use the injected-provider HTML handoff on http://127.0.0.1."
+    "Desktop owner path: open the committed HTTPS HTML handoff in Chrome with Phantom "
+    f"({LIVE_PROOF_HTML_REPO_PATH}). http://127.0.0.1 is an optional offline/dev fallback only."
 )
+
+
+def live_proof_jsdelivr_url(commit_sha: str) -> str:
+    sha = str(commit_sha).strip()
+    if not sha:
+        raise TransactionControlError(
+            "commit SHA is required for the jsDelivr handoff URL",
+            reasons=("commit SHA is required for the jsDelivr handoff URL",),
+        )
+    return f"https://cdn.jsdelivr.net/gh/{GITHUB_REPO}@{sha}/{LIVE_PROOF_HTML_REPO_PATH}"
+
+
+def live_proof_github_blob_url(commit_sha: str) -> str:
+    sha = str(commit_sha).strip()
+    return f"https://github.com/{GITHUB_REPO}/blob/{sha}/{LIVE_PROOF_HTML_REPO_PATH}"
 
 
 def default_desktop_handoff_path() -> Path:
@@ -161,16 +184,18 @@ _TEMPLATE = """<!DOCTYPE html>
 <body>
   <h1>AI4 DevNet desktop handoff</h1>
   <p>{attribution_html}</p>
-  <p><strong>Desktop owner path:</strong> Chrome with the Phantom <em>extension</em>,
-  this page served at <code>http://127.0.0.1</code>. Phantom injects
-  <code>window.phantom.solana</code> on https / localhost / 127.0.0.1 only —
+  <p><strong>Desktop owner path:</strong> open this page over <strong>HTTPS</strong>
+  in Chrome with the Phantom <em>extension</em>. Phantom injects
+  <code>window.phantom.solana</code> on https / localhost / 127.0.0.1 —
   not on <code>file://</code>, and not via <code>https://phantom.app/ul/browse/...</code>
-  (that Universal Link is <strong>MOBILE_ONLY</strong>).</p>
+  (that Universal Link is <strong>MOBILE_ONLY</strong>).
+  <code>http://127.0.0.1</code> is an optional offline/dev fallback only.</p>
   <div class="warn">
     <strong>Before you click:</strong> in Phantom, set the cluster to
-    <strong>Devnet</strong> (Testnet/Devnet). This page cannot lock the extension
-    cluster. Confirm destination and lamports match the approved binding.
-    AI4 does not hold keys or assets. Never paste a seed or private key here.
+    <strong>Devnet</strong>. This page cannot lock the extension cluster.
+    Confirm destination and lamports match the approved binding below.
+    Click <em>Approve in Phantom</em> (user gesture) and approve in Phantom's dialog.
+    AI4 does not hold keys or assets. This page has no seed or key fields.
   </div>
   <h2>Approved binding (visual confirm)</h2>
   <div class="box">
@@ -185,10 +210,10 @@ _TEMPLATE = """<!DOCTYPE html>
   </div>
   <h2>Frozen Solana Pay URI (mobile / QR; not the desktop path)</h2>
   <pre>{uri_html}</pre>
-  <p><button id="send" type="button">Connect Phantom and send the approved DevNet transfer</button></p>
+  <p><button id="send" type="button">Approve in Phantom</button></p>
   <p class="ok" id="status"></p>
-  <p>Public transaction signature (paste back to AI4 <code>--signature</code>):</p>
-  <textarea id="sig" readonly placeholder="(none yet — AI4 never fills this)"></textarea>
+  <p>Public transaction signature (shown only after Phantom's dialog returns; paste back to AI4 <code>--signature</code>):</p>
+  <textarea id="sig" readonly placeholder="(none yet — waiting for Phantom dialog)"></textarea>
   <p class="err" id="err"></p>
   <script src="{web3_cdn}"></script>
   <script>
@@ -224,7 +249,7 @@ _TEMPLATE = """<!DOCTYPE html>
     }}
     const provider = getProvider();
     if (!provider) {{
-      fail("Phantom extension not detected. Open this page at http://127.0.0.1 (python3 -m http.server --bind 127.0.0.1). Do not use file://. Do not use phantom.app/ul/browse (MOBILE_ONLY). Never paste a private key.");
+      fail("Phantom extension not detected. Open this HTTPS page in Chrome with Phantom installed. Do not use file://. Do not use phantom.app/ul/browse (MOBILE_ONLY). This page never asks for a key.");
       return;
     }}
     const connection = new solanaWeb3.Connection(AI4.rpcUrl, "confirmed");
@@ -261,7 +286,7 @@ _TEMPLATE = """<!DOCTYPE html>
     }}
     document.getElementById("sig").value = signature;
     document.getElementById("status").textContent =
-      "Broadcast requested. Copy the public signature below and pass it to AI4 --signature. AI4 did not sign.";
+      "Phantom dialog returned a public signature. AI4 did not sign and does not poll status from this page. Paste the signature into AI4 --signature if you want a receipt.";
   }}
 
   document.getElementById("send").addEventListener("click", function () {{

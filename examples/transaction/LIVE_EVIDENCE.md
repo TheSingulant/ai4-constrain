@@ -36,7 +36,8 @@ not a PyPI release of transaction features.
 | Approved binding `sha256` | |
 | Handoff URI | |
 | Phantom browse URI (MOBILE_ONLY) | |
-| Desktop HTML path (`http://127.0.0.1`) | |
+| Desktop HTML path (`http://127.0.0.1`) | optional offline fallback only |
+| HTTPS live-proof HTML (jsDelivr) | |
 
 ## Live wallet handoff (owner)
 

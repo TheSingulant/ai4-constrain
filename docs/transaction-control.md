@@ -151,9 +151,10 @@ This scaffold does **not** implement Phantom `/ul/v1/signAndSendTransaction`
 
    iOS/Android in-app browser. See https://docs.phantom.com/phantom-deeplinks/deeplinks-ios-and-android .
    The Chrome/desktop extension does **not** consume this link (it commonly
-   redirects to phantom.com/download). Desktop DevNet E2E uses a local HTML
-   page and `window.phantom.solana.signAndSendTransaction` instead. See
-   [`transaction-devnet-e2e.md`](transaction-devnet-e2e.md).
+   redirects to phantom.com/download). Desktop DevNet E2E uses a committed
+   HTTPS HTML page and `window.phantom.solana.signAndSendTransaction`.
+   See [`transaction-devnet-e2e.md`](transaction-devnet-e2e.md).
+   `http://127.0.0.1` is an optional offline fallback only.
 
 The user reviews and signs in their wallet. AI4 does not hold keys or assets.
 `UnsignedPayload` remains an honest stub (`solana_system_transfer_stub`), not

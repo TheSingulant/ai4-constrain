@@ -163,7 +163,8 @@ def test_prepare_only_allow_prints_binding_and_uris(monkeypatch, capsys, tmp_pat
     assert "ai4-network=devnet" in captured.out
     assert "phantom.app/ul/browse" in captured.out
     assert "MOBILE_ONLY" in captured.out
-    assert "desktop_handoff_path" in captured.out
+    assert "committed_html" in captured.out
+    assert "Approve in Phantom" in captured.out
     assert "http://127.0.0.1" in captured.out
     assert "Prepared and constrained by AI4" in captured.out
     assert '"lifecycle_state": "prepared"' in captured.out

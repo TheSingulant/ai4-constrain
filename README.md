@@ -112,7 +112,7 @@ ai4-transaction status <signature>
 
 This is a feature-branch scaffold. Package version remains **0.7.0**. It is not a PyPI release of transaction features.
 
-**DevNet E2E proof (tiny SOL amounts only):** [`examples/transaction/devnet_e2e.py`](examples/transaction/devnet_e2e.py) forces `network=devnet`, prints the DecisionReport / approved binding / Solana Pay URI, writes a **desktop** Phantom-extension HTML handoff, and observes `status()` after **you** sign. `phantom.app/ul/browse` is MOBILE_ONLY. AI4 does not hold keys. Runbook: [`docs/transaction-devnet-e2e.md`](docs/transaction-devnet-e2e.md).
+**DevNet E2E proof (tiny SOL amounts only):** [`examples/transaction/devnet_e2e.py`](examples/transaction/devnet_e2e.py) forces `network=devnet`. Desktop owners open the committed HTTPS handoff [`examples/transaction/live_proof/fe30e76a_devnet_handoff.html`](examples/transaction/live_proof/fe30e76a_devnet_handoff.html) in Chrome with Phantom. `phantom.app/ul/browse` is MOBILE_ONLY. AI4 does not hold keys. Runbook: [`docs/transaction-devnet-e2e.md`](docs/transaction-devnet-e2e.md).
 
 Class **042** hosted Telegram is **not** in this tree and is not deployed from this PR. Handler design: [`docs/telegram-transaction-design.md`](docs/telegram-transaction-design.md). Architecture, fail-closed rules, and mint-flow findings: [`docs/transaction-control.md`](docs/transaction-control.md).
 

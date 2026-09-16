@@ -14,6 +14,7 @@ from ai4.transaction.handoff import (
     phantom_browse_uri,
     solana_pay_transfer_uri,
 )
+from ai4.transaction.desktop_handoff import PHANTOM_BROWSE_CHANNEL
 from tests.transaction_util import solana_address
 
 DEST = solana_address(23)
@@ -46,3 +47,4 @@ def test_phantom_browse_wraps_encoded_inner():
     assert unquote(encoded_part) == inner
     assert "ref=" in browse
     assert "/ul/v1/signAndSendTransaction" not in browse
+    assert PHANTOM_BROWSE_CHANNEL == "mobile_only"

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>AI4 DevNet desktop handoff (Phantom extension)</title>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, sans-serif; max-width: 52rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.45; color: #111; }
+    code, pre { font-family: ui-monospace, monospace; font-size: 0.85rem; word-break: break-all; }
+    .warn { background: #fff3cd; border: 1px solid #ffc107; padding: 0.9rem 1rem; }
+    .box { background: #f6f7f9; border: 1px solid #d0d7de; padding: 0.9rem 1rem; margin: 1rem 0; }
+    button { font-size: 1rem; padding: 0.6rem 1rem; cursor: pointer; }
+    #sig { width: 100%; min-height: 4rem; }
+    .ok { color: #0b6e32; }
+    .err { color: #a40e26; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>AI4 DevNet desktop handoff</h1>
+  <p>Prepared and constrained by AI4; signed and broadcast by the user&#x27;s wallet.</p>
+  <p><strong>Desktop owner path:</strong> open this page over <strong>HTTPS</strong>
+  in Chrome with the Phantom <em>extension</em>. Phantom injects
+  <code>window.phantom.solana</code> on https / localhost / 127.0.0.1 —
+  not on <code>file://</code>, and not via <code>https://phantom.app/ul/browse/...</code>
+  (that Universal Link is <strong>MOBILE_ONLY</strong>).
+  <code>http://127.0.0.1</code> is an optional offline/dev fallback only.</p>
+  <div class="warn">
+    <strong>Before you click:</strong> in Phantom, set the cluster to
+    <strong>Devnet</strong>. This page cannot lock the extension cluster.
+    Confirm destination and lamports match the approved binding below.
+    Click <em>Approve in Phantom</em> (user gesture) and approve in Phantom's dialog.
+    AI4 does not hold keys or assets. This page has no seed or key fields.
+  </div>
+  <h2>Approved binding (visual confirm)</h2>
+  <div class="box">
+    <div>network: <code>devnet</code></div>
+    <div>asset: <code>SOL</code></div>
+    <div>action: <code>transfer</code></div>
+    <div>amount: <code>0.001</code> SOL</div>
+    <div>lamports: <code>1000000</code></div>
+    <div>destination: <code>4WDYrTNTit9m7kU5y2LWCfvf35pQo9vbjPTDyiDHEq9e</code></div>
+    <div>sha256: <code>fe30e76ac25e766f37d4f719caaa7efa7b2603afbf388dbca609154258a37da0</code></div>
+    <div>rpc: <code>https://api.devnet.solana.com</code></div>
+  </div>
+  <h2>Frozen Solana Pay URI (mobile / QR; not the desktop path)</h2>
+  <pre>solana:4WDYrTNTit9m7kU5y2LWCfvf35pQo9vbjPTDyiDHEq9e?amount=0.001&amp;label=AI4+transfer+on+Solana+devnet&amp;message=Unsigned+SOL+transfer+on+Solana+devnet.+Review+and+sign+in+your+wallet.+Wallet+cluster+is+a+user+setting.&amp;ai4-network=devnet</pre>
+  <p><button id="send" type="button">Approve in Phantom</button></p>
+  <p class="ok" id="status"></p>
+  <p>Public transaction signature (shown only after Phantom's dialog returns; paste back to AI4 <code>--signature</code>):</p>
+  <textarea id="sig" readonly placeholder="(none yet — waiting for Phantom dialog)"></textarea>
+  <p class="err" id="err"></p>
+  <script src="https://unpkg.com/@solana/web3.js@1.98.4/lib/index.iife.min.js"></script>
+  <script>
+  const AI4 = {"network":"devnet","asset":"SOL","action":"transfer","amountSol":"0.001","lamports":1000000,"destination":"4WDYrTNTit9m7kU5y2LWCfvf35pQo9vbjPTDyiDHEq9e","sha256":"fe30e76ac25e766f37d4f719caaa7efa7b2603afbf388dbca609154258a37da0","rpcUrl":"https://api.devnet.solana.com","handoffUri":"solana:4WDYrTNTit9m7kU5y2LWCfvf35pQo9vbjPTDyiDHEq9e?amount=0.001&label=AI4+transfer+on+Solana+devnet&message=Unsigned+SOL+transfer+on+Solana+devnet.+Review+and+sign+in+your+wallet.+Wallet+cluster+is+a+user+setting.&ai4-network=devnet","devnetGenesisHash":"EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG","attribution":"Prepared and constrained by AI4; signed and broadcast by the user's wallet."};
+  const DEVNET_GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
+
+  function getProvider() {
+    const phantom = window.phantom && window.phantom.solana;
+    if (phantom && phantom.isPhantom) return phantom;
+    if (window.solana && window.solana.isPhantom) return window.solana;
+    return null;
+  }
+
+  function fail(msg) {
+    document.getElementById("err").textContent = msg;
+    document.getElementById("status").textContent = "";
+  }
+
+  async function sendApproved() {
+    document.getElementById("err").textContent = "";
+    document.getElementById("sig").value = "";
+    if (!window.solanaWeb3) {
+      fail("solanaWeb3 CDN failed to load; refuse.");
+      return;
+    }
+    if (AI4.network !== "devnet") {
+      fail("Binding network is not devnet; refuse.");
+      return;
+    }
+    if (typeof AI4.lamports !== "number" || AI4.lamports <= 0 || !Number.isInteger(AI4.lamports)) {
+      fail("Binding lamports are not a positive integer; refuse.");
+      return;
+    }
+    const provider = getProvider();
+    if (!provider) {
+      fail("Phantom extension not detected. Open this HTTPS page in Chrome with Phantom installed. Do not use file://. Do not use phantom.app/ul/browse (MOBILE_ONLY). This page never asks for a key.");
+      return;
+    }
+    const connection = new solanaWeb3.Connection(AI4.rpcUrl, "confirmed");
+    const genesis = await connection.getGenesisHash();
+    if (genesis !== DEVNET_GENESIS) {
+      fail("RPC genesis hash is not Solana DevNet; refuse. Phantom cluster is still a user setting — switch Phantom to Devnet.");
+      return;
+    }
+    const resp = await provider.connect();
+    const from = provider.publicKey || (resp && resp.publicKey);
+    if (!from) {
+      fail("Phantom did not return a public key; refuse.");
+      return;
+    }
+    const to = new solanaWeb3.PublicKey(AI4.destination);
+    if (to.toBase58() !== AI4.destination) {
+      fail("Destination pubkey round-trip mismatch; refuse.");
+      return;
+    }
+    const ix = solanaWeb3.SystemProgram.transfer({
+      fromPubkey: from,
+      toPubkey: to,
+      lamports: AI4.lamports
+    });
+    const tx = new solanaWeb3.Transaction().add(ix);
+    tx.feePayer = from;
+    const latest = await connection.getLatestBlockhash("finalized");
+    tx.recentBlockhash = latest.blockhash;
+    const sent = await provider.signAndSendTransaction(tx);
+    const signature = sent && sent.signature ? sent.signature : sent;
+    if (!signature || typeof signature !== "string") {
+      fail("Phantom did not return a public signature; refuse.");
+      return;
+    }
+    document.getElementById("sig").value = signature;
+    document.getElementById("status").textContent =
+      "Phantom dialog returned a public signature. AI4 did not sign and does not poll status from this page. Paste the signature into AI4 --signature if you want a receipt.";
+  }
+
+  document.getElementById("send").addEventListener("click", function () {
+    sendApproved().catch(function (err) {
+      fail(String(err && err.message ? err.message : err));
+    });
+  });
+  </script>
+</body>
+</html>

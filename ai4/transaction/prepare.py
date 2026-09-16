@@ -166,7 +166,11 @@ def format_prepare_summary(result: PrepareResult) -> str:
         if result.handoff_uri:
             lines.append(f"Wallet handoff URI: {result.handoff_uri}")
         if result.phantom_browse_uri:
-            lines.append(f"Phantom browse URI: {result.phantom_browse_uri}")
+            lines.append(f"Phantom browse URI (MOBILE_ONLY): {result.phantom_browse_uri}")
+            lines.append(
+                "Phantom browse Universal Link is MOBILE_ONLY (iOS/Android in-app browser). "
+                "The Chrome/desktop extension does not consume it."
+            )
         lines.append(
             "Wallet cluster is a user setting. The URI records ai4-network for binding; "
             "confirm the wallet is on the same Solana cluster before you sign."

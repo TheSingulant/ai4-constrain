@@ -16,6 +16,7 @@
 - Broader developer examples for hybrid `GoverningIntegration` (still optional / fail-closed)
 - Discoverability hygiene (topics, homepage, downstream dataset mapping) as process work outside the library API
 - Transaction-control scaffold (`ai4.transaction`) is feature-branch work only; not a 0.7.0 completeness claim and not a Telegram host
+- Solana DevNet E2E proof harness is also scaffold-only (tiny SOL amounts, user-wallet signing; not a PyPI transaction release)
 
 ## Explicitly out of scope for this public tree
 

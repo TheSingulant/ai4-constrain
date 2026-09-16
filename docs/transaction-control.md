@@ -145,11 +145,16 @@ This scaffold does **not** implement Phantom `/ul/v1/signAndSendTransaction`
    `spl-token` field. `label` and `message` include the approved cluster
    (for example `AI4 transfer on Solana mainnet-beta`).
 
-2. **Phantom browse Universal Link** wrapping that URI:
+2. **Phantom browse Universal Link** wrapping that URI (**MOBILE_ONLY**):
 
    `https://phantom.app/ul/browse/<url-encoded-solana-pay>?ref=<url-encoded-ref>`
 
-   See https://docs.phantom.com/phantom-deeplinks/deeplinks-ios-and-android
+   iOS/Android in-app browser. See https://docs.phantom.com/phantom-deeplinks/deeplinks-ios-and-android .
+   The Chrome/desktop extension does **not** consume this link (it commonly
+   redirects to phantom.com/download). Desktop DevNet E2E uses a committed
+   HTTPS HTML page and `window.phantom.solana.signAndSendTransaction`.
+   See [`transaction-devnet-e2e.md`](transaction-devnet-e2e.md).
+   `http://127.0.0.1` is an optional offline fallback only.
 
 The user reviews and signs in their wallet. AI4 does not hold keys or assets.
 `UnsignedPayload` remains an honest stub (`solana_system_transfer_stub`), not
@@ -195,6 +200,17 @@ fail closed. A found on-chain `err` is a real result, not an ambiguous miss.
 CLI never labels a fail-closed receipt as confirmed.
 
 Explorer links are optional and only when `--network` is supplied.
+
+## DevNet E2E proof
+
+A separate **DevNet-only** harness (`ai4.transaction.devnet_e2e`, example at
+`examples/transaction/devnet_e2e.py`) forces `network=devnet`, caps the proof
+at 0.01 SOL, never signs, and records an `AI4Receipt` after the user wallet
+broadcasts. See [`transaction-devnet-e2e.md`](transaction-devnet-e2e.md).
+
+The general `prepare_transfer` / `ai4-transaction prepare` path still accepts
+`mainnet-beta` / `localnet` for the scaffold. The live E2E proof entrypoint
+must not.
 
 ## Audit-log SaaS stub
 

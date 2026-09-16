@@ -30,7 +30,6 @@ htmlcov/
 *.swp
 .DS_Store
 
-# Experiment outputs
-outputs/
-*.log
-.ai4-sessions/
+# Generated DevNet desktop handoff (may contain a live destination)
+examples/transaction/ai4_desktop_handoff.html
+ai4_desktop_handoff.html

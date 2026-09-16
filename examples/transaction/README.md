@@ -5,9 +5,12 @@ Scaffold / unreleased feature work. Package version remains **0.7.0**.
 ## Solana DevNet E2E proof
 
 `examples/transaction/devnet_e2e.py` prepares a **tiny native SOL transfer on
-DevNet only**, prints the DecisionReport, approved binding, and Phantom
-handoff URI, then (optionally) polls `status()` after **you** sign and
-broadcast in a self-custodial wallet.
+DevNet only**, prints the DecisionReport, approved binding, and Solana Pay
+URI, writes a desktop Phantom-extension HTML page, then (optionally) polls
+`status()` after **you** sign and broadcast.
+
+`https://phantom.app/ul/browse/...` is **MOBILE_ONLY**. Desktop owners open the
+generated HTML via `http://127.0.0.1` (Phantom injects there; not `file://`).
 
 AI4 does not hold keys or assets. There is no signing automation.
 

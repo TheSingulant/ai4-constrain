@@ -136,8 +136,9 @@ def test_cli_rejects_localnet(monkeypatch, capsys):
     assert "localnet" in capsys.readouterr().err
 
 
-def test_prepare_only_allow_prints_binding_and_uris(monkeypatch, capsys):
+def test_prepare_only_allow_prints_binding_and_uris(monkeypatch, capsys, tmp_path):
     monkeypatch.delenv("AI4_SOLANA_RPC_URL", raising=False)
+    html_path = tmp_path / "ai4_desktop_handoff.html"
     code = main(
         [
             "--destination",
@@ -147,6 +148,8 @@ def test_prepare_only_allow_prints_binding_and_uris(monkeypatch, capsys):
             "--rpc-url",
             RPC,
             "--prepare-only",
+            "--desktop-handoff-path",
+            str(html_path),
         ],
         evaluate_fn=_accept,
         rpc_post=_rpc_prepare_ok(),
@@ -159,9 +162,17 @@ def test_prepare_only_allow_prints_binding_and_uris(monkeypatch, capsys):
     assert "sha256" in captured.out
     assert "ai4-network=devnet" in captured.out
     assert "phantom.app/ul/browse" in captured.out
+    assert "MOBILE_ONLY" in captured.out
+    assert "desktop_handoff_path" in captured.out
+    assert "http://127.0.0.1" in captured.out
     assert "Prepared and constrained by AI4" in captured.out
     assert '"lifecycle_state": "prepared"' in captured.out
     assert '"network": "devnet"' in captured.out
+    assert html_path.is_file()
+    html = html_path.read_text(encoding="utf-8")
+    assert DEST in html
+    assert "1000000" in html
+    assert "signAndSendTransaction" in html
 
 
 def test_handoff_binding_hash_survives_e2e_receipt(monkeypatch):
@@ -404,7 +415,7 @@ def test_public_rpc_example_is_documented_not_default():
     assert "silent" in source.lower() or "never inferred" in source or "hardcoded default" in source
 
 
-def test_cli_prepare_only_json_receipt_is_parseable(monkeypatch, capsys):
+def test_cli_prepare_only_json_receipt_is_parseable(monkeypatch, capsys, tmp_path):
     monkeypatch.delenv("AI4_SOLANA_RPC_URL", raising=False)
     code = main(
         [
@@ -413,6 +424,8 @@ def test_cli_prepare_only_json_receipt_is_parseable(monkeypatch, capsys):
             "--rpc-url",
             RPC,
             "--prepare-only",
+            "--desktop-handoff-path",
+            str(tmp_path / "ai4_desktop_handoff.html"),
         ],
         evaluate_fn=_accept,
         rpc_post=_rpc_prepare_ok(),

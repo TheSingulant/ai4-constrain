@@ -80,12 +80,13 @@ def solana_pay_transfer_uri(
 
 
 def phantom_browse_uri(inner_uri: str, *, ref: str = DEFAULT_HANDOFF_REF) -> str:
-    """Wrap an inner URI (usually Solana Pay) in Phantom's browse Universal Link.
+    """Wrap an inner URI (usually Solana Pay) in Phantom's **mobile** browse UL.
 
     Shape: ``https://phantom.app/ul/browse/<url-encoded-inner>?ref=<url-encoded-ref>``
 
-    This is a handoff template, not a signed transaction and not
-    ``/ul/v1/signAndSendTransaction``.
+    MOBILE_ONLY: iOS/Android in-app browser. The Chrome/desktop extension does
+    not consume this Universal Link. Desktop owners must use the injected
+    provider HTML handoff. This is not ``/ul/v1/signAndSendTransaction``.
     """
 
     encoded_inner = quote(inner_uri, safe="")

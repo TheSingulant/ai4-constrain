@@ -9,6 +9,7 @@ All notable public releases of `ai4-constrain` are listed here.
 - `ai4.transaction` scaffold: Solana native SOL transfer validate / firewall / prepare / status / CLI
 - Decision-to-handoff binding: `ai4-network` query param, URI parse-back before ALLOW, `approved_binding` on `PrepareResult`
 - Solana **DevNet-only** E2E proof harness (`examples/transaction/devnet_e2e.py`, `ai4.transaction.receipt.AI4Receipt`): tiny SOL cap (≤ 0.01), forced `network=devnet`, user-wallet signing, `status()` poll, structured receipt
+- Desktop Phantom **extension** handoff: local HTML + injected `window.phantom.solana` (`signAndSendTransaction`). Phantom `ul/browse` Universal Link is labeled **MOBILE_ONLY** (not the Chrome/desktop path)
 - `docs/transaction-control.md`, `docs/transaction-devnet-e2e.md`, and `docs/telegram-transaction-design.md`
 - Optional empty `AI4_SOLANA_RPC_URL=` in `.env.example`
 - Console script `ai4-transaction` (feature branch only; package version remains 0.7.0)

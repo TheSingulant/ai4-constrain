@@ -5,7 +5,8 @@ Live path: user intent → validate → constrain firewall → DecisionReport AL
 broadcasts on **devnet** → ``status()`` observes lifecycle → AI4 receipt.
 
 This module never signs, never loads key files, and never broadcasts from a
-server key. Signing is Phantom (or equivalent) via the printed handoff URI.
+server key. Desktop signing is the Phantom Chrome extension via a local HTML
+page (injected provider). ``phantom.app/ul/browse`` is MOBILE_ONLY.
 """
 
 from __future__ import annotations
@@ -18,9 +19,18 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal
+from pathlib import Path
 from typing import TextIO
 from urllib.parse import urlparse
 
+from ai4.transaction.desktop_handoff import (
+    DEFAULT_HANDOFF_FILENAME,
+    PHANTOM_BROWSE_OWNER_NOTE,
+    default_desktop_handoff_path,
+    local_http_open_url,
+    local_http_serve_command,
+    write_desktop_handoff_html,
+)
 from ai4.transaction.errors import TransactionControlError, TransactionValidationError
 from ai4.transaction.firewall import EvaluateFn
 from ai4.transaction.prepare import prepare_transfer
@@ -98,6 +108,7 @@ class DevnetE2EResult:
     receipt: AI4Receipt | None
     status_receipt: Receipt | None = None
     error: str | None = None
+    desktop_handoff_path: str | None = None
 
 
 def require_devnet(network: Network | str | None) -> Network:
@@ -513,6 +524,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="Stop after ALLOW handoff. Do not prompt for a signature.",
     )
     parser.add_argument(
+        "--desktop-handoff-path",
+        default=None,
+        help=(
+            "Where to write the desktop Phantom-extension HTML on ALLOW. "
+            f"Default: examples/transaction/{DEFAULT_HANDOFF_FILENAME} when that "
+            "directory exists, else ./ai4_desktop_handoff.html. Not a key file."
+        ),
+    )
+    parser.add_argument(
+        "--no-desktop-handoff",
+        action="store_true",
+        help="Do not write the desktop HTML file (Solana Pay URI is still printed).",
+    )
+    parser.add_argument(
         "--poll-timeout",
         default=str(DEFAULT_POLL_TIMEOUT_S),
         help="Seconds to poll status() after a signature is supplied.",
@@ -532,17 +557,38 @@ def _print_json_block(title: str, payload: object, *, stream: TextIO) -> None:
     stream.write("\n")
 
 
-def print_prepare_artifacts(prepare: PrepareResult, *, stream: TextIO = sys.stdout) -> None:
+def print_prepare_artifacts(
+    prepare: PrepareResult,
+    *,
+    stream: TextIO = sys.stdout,
+    desktop_handoff_path: str | None = None,
+) -> None:
     report_payload = None if prepare.report is None else prepare.report.to_dict()
     _print_json_block("DecisionReport", report_payload, stream=stream)
     binding = None if prepare.approved_binding is None else prepare.approved_binding.to_dict()
     _print_json_block("Approved binding", binding, stream=stream)
     stream.write("=== Wallet handoff ===\n")
     stream.write(f"handoff_uri: {prepare.handoff_uri}\n")
-    stream.write(f"phantom_browse_uri: {prepare.phantom_browse_uri}\n")
+    stream.write(f"phantom_browse_uri (MOBILE_ONLY): {prepare.phantom_browse_uri}\n")
+    stream.write(PHANTOM_BROWSE_OWNER_NOTE + "\n")
+    if desktop_handoff_path:
+        path = Path(desktop_handoff_path)
+        stream.write("=== Desktop handoff (Phantom Chrome extension) ===\n")
+        stream.write(f"desktop_handoff_path: {path}\n")
+        stream.write(f"desktop_handoff_file_uri: {path.resolve().as_uri()}\n")
+        stream.write(
+            "Phantom does not inject into file://. Serve on 127.0.0.1 then open in Chrome:\n"
+        )
+        stream.write(f"  {local_http_serve_command(path)}\n")
+        stream.write(f"  open {local_http_open_url(path)}\n")
+        stream.write(
+            "Confirm Phantom is on Devnet. The page sends SystemProgram.transfer with "
+            "the approved destination and lamports via window.phantom.solana."
+            " Paste the public signature back to --signature. AI4 does not hold keys.\n"
+        )
     stream.write(
-        "Open the handoff in Phantom (or equivalent). Confirm the wallet cluster is "
-        "Solana DevNet before you sign. AI4 does not hold keys or assets.\n"
+        "Confirm the wallet cluster is Solana DevNet before you sign. "
+        "AI4 does not hold keys or assets.\n"
     )
     stream.write(f"{ATTRIBUTION}\n")
     stream.write(
@@ -604,8 +650,39 @@ def main(
             timeout_s=timeout_s,
             interval_s=interval_s,
         )
+        desktop_path_text = None
+        if (
+            result.prepare is not None
+            and result.prepare.allowed
+            and result.prepare.approved_binding is not None
+            and result.prepare.handoff_uri
+            and not args.no_desktop_handoff
+        ):
+            target = (
+                Path(args.desktop_handoff_path)
+                if args.desktop_handoff_path
+                else default_desktop_handoff_path()
+            )
+            written = write_desktop_handoff_html(
+                target,
+                result.prepare.approved_binding,
+                rpc_url=rpc,
+                handoff_uri=result.prepare.handoff_uri,
+            )
+            desktop_path_text = str(written)
+            result = DevnetE2EResult(
+                prepare=result.prepare,
+                receipt=result.receipt,
+                status_receipt=result.status_receipt,
+                error=result.error,
+                desktop_handoff_path=desktop_path_text,
+            )
         if result.prepare is not None:
-            print_prepare_artifacts(result.prepare, stream=out)
+            print_prepare_artifacts(
+                result.prepare,
+                stream=out,
+                desktop_handoff_path=desktop_path_text,
+            )
 
         if result.prepare is not None and result.prepare.allowed and not args.prepare_only:
             if not signature:

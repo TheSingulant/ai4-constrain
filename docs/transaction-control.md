@@ -145,11 +145,15 @@ This scaffold does **not** implement Phantom `/ul/v1/signAndSendTransaction`
    `spl-token` field. `label` and `message` include the approved cluster
    (for example `AI4 transfer on Solana mainnet-beta`).
 
-2. **Phantom browse Universal Link** wrapping that URI:
+2. **Phantom browse Universal Link** wrapping that URI (**MOBILE_ONLY**):
 
    `https://phantom.app/ul/browse/<url-encoded-solana-pay>?ref=<url-encoded-ref>`
 
-   See https://docs.phantom.com/phantom-deeplinks/deeplinks-ios-and-android
+   iOS/Android in-app browser. See https://docs.phantom.com/phantom-deeplinks/deeplinks-ios-and-android .
+   The Chrome/desktop extension does **not** consume this link (it commonly
+   redirects to phantom.com/download). Desktop DevNet E2E uses a local HTML
+   page and `window.phantom.solana.signAndSendTransaction` instead. See
+   [`transaction-devnet-e2e.md`](transaction-devnet-e2e.md).
 
 The user reviews and signs in their wallet. AI4 does not hold keys or assets.
 `UnsignedPayload` remains an honest stub (`solana_system_transfer_stub`), not

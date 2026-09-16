@@ -11,7 +11,7 @@ user intent
   → validate
   → ai4.constrain Transaction Firewall
   → DecisionReport ALLOW
-  → bound wallet handoff (Solana Pay + Phantom browse URI)
+  → bound wallet handoff (Solana Pay URI + desktop HTML; browse UL is MOBILE_ONLY)
   → human signs in a self-custodial wallet
   → wallet broadcasts on devnet
   → status() observes lifecycle
@@ -33,7 +33,7 @@ Never claim AI4 executed the transfer.
 | Amount | Proof cap **≤ 0.01 SOL**. CLI default **0.001 SOL**. |
 | Keys | No seeds, private keys, key files, or signing automation. No CLI flags for secrets. |
 | RPC | No hardcoded RPC and no credentialed URLs. Pass `--rpc-url` or set `AI4_SOLANA_RPC_URL`. If both are set and they **differ**, fail closed. Hosts that look like mainnet or localhost are refused. |
-| Signing | Printed handoff URI only. Phantom (or equivalent) is operated by the user. |
+| Signing | Desktop: local HTML + Phantom **extension** injected provider (`window.phantom.solana`). Mobile: Solana Pay URI / Phantom browse UL. AI4 never signs. |
 
 Architecture for the broader scaffold (including mainnet-capable `prepare`,
 which this E2E path must not use) is in
@@ -75,17 +75,40 @@ Stdout prints:
 
 1. DecisionReport JSON
 2. Approved binding (including `sha256`)
-3. Solana Pay `handoff_uri` and Phantom `phantom_browse_uri`
-4. Structured AI4 receipt with `lifecycle_state=prepared` (no signature)
+3. Solana Pay `handoff_uri` (frozen transfer request)
+4. Phantom `phantom_browse_uri` labeled **MOBILE_ONLY**
+5. Desktop handoff path + `http://127.0.0.1` serve command
+6. Structured AI4 receipt with `lifecycle_state=prepared` (no signature)
+
+### Desktop vs mobile handoff
+
+| Path | What | Who |
+| --- | --- | --- |
+| Solana Pay `solana:<dest>?amount=...&ai4-network=devnet` | Wallet-agnostic transfer request. Mobile wallets register the scheme or scan a QR. | Mobile / QR |
+| `https://phantom.app/ul/browse/<url>` | Phantom **iOS/Android** in-app browser Universal Link. **Not** consumed by the Chrome/desktop extension (often redirects to phantom.com/download). | **MOBILE_ONLY** |
+| Generated `ai4_desktop_handoff.html` served at `http://127.0.0.1` | Chrome + Phantom **extension**. Uses `window.phantom.solana` / `window.solana`, `SystemProgram.transfer` with **exact** approved destination + lamports, then `signAndSendTransaction`. Shows the public signature to paste back. | **Desktop owner path** |
+
+Phantom injects the provider on `https://`, `localhost`, and `127.0.0.1` only — **not** `file://`. After prepare-only:
+
+```bash
+python3 -m http.server 8765 --bind 127.0.0.1 --directory examples/transaction
+# open http://127.0.0.1:8765/ai4_desktop_handoff.html in Chrome with Phantom
+```
+
+Switch Phantom to **Devnet** before clicking send. The page cannot lock the extension cluster.
 
 ### 2. Sign in your wallet (owner)
 
-1. Confirm the wallet cluster is **Solana DevNet** (user setting).
-2. Open the handoff URI / Phantom browse URI.
-3. Review destination and amount. Sign. The **wallet** broadcasts.
-4. Copy the public transaction signature.
+**Desktop (Chrome extension) — owner path:**
 
-AI4 must never see a seed, private key, or keystore file.
+1. Confirm Phantom's cluster is **Solana Devnet**.
+2. Serve and open the generated HTML at `http://127.0.0.1` as printed by the harness.
+3. Confirm destination, lamports, and binding `sha256` on the page.
+4. Click connect/send. Phantom signs and broadcasts. Copy the **public** signature.
+
+**Mobile:** open the Solana Pay URI or the MOBILE_ONLY browse UL in Phantom's iOS/Android app. Do not use the browse UL as the desktop path.
+
+AI4 must never see a seed, private key, or keystore file. Do not "type Send" in Phantom as a substitute for the injected-provider page.
 
 ### 3. Observe lifecycle
 
@@ -155,7 +178,8 @@ Do not invent a live signature or explorer link.
 - [ ] Package version **0.7.0** (unchanged)
 - [ ] DecisionReport (`accept` / product `ALLOW`)
 - [ ] Approved binding fields + `sha256`
-- [ ] Handoff URI and Phantom browse URI (`ai4-network=devnet`)
+- [ ] Handoff URI (`solana:...`, `ai4-network=devnet`) and binding `sha256`
+- [ ] Desktop HTML path served at `http://127.0.0.1` (or MOBILE_ONLY browse UL on a phone)
 - [ ] `LIVE_WALLET_HANDOFF` (owner): wallet cluster confirmed DevNet
 - [ ] `LIVE_SIGNATURE` (owner): public signature only
 - [ ] `status()` progression

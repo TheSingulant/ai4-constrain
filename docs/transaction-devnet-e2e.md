@@ -28,9 +28,11 @@ Never claim AI4 executed the transfer.
 
 **Live DevNet E2E (owner Phantom signature) is recorded** in
 [`examples/transaction/LIVE_EVIDENCE.md`](../examples/transaction/LIVE_EVIDENCE.md).
-That proof is scaffold only: package version remains **0.7.0**, it is not a
-PyPI transaction-feature claim, and it is not Telegram. Do not merge this PR
-from this note alone.
+That proof is scaffold and evidence only. The package version remains
+**0.7.0**. There is no PyPI transaction-feature release. The harness is
+DevNet-only, limited to tiny SOL amounts, and signed in the owner wallet.
+AI4 does not hold keys. This note is not a mainnet claim and not a Telegram
+deployment.
 
 ## Safety locks
 

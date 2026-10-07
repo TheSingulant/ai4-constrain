@@ -58,7 +58,7 @@ mint is documented below and is not implemented here.
 - CLI `ai4-transaction`
 - Audit-log **stub interface only** (`AuditLogService` / `AuditLogSink`)
 
-**Lives in a future Telegram host (not this PR):**
+**Lives in a future Telegram host, outside this public runtime tree:**
 
 - Bot process, chat transport, feature flag, user/chat allowlist
 - Confirmation screen rendering
@@ -231,8 +231,9 @@ This public tree has no Solana / Phantom / mint transfer pipeline for wrapping
 a live `.ai4` name-registration or mint. As of this work, a private
 singularity tree is also not treated as an in-repo mint wrap source.
 
-**Therefore:** wrap of live `.ai4` name-registration / mint is out of scope
-for this PR. Do not change mainnet mint code in this turn.
+**Therefore:** wrap of live `.ai4` name-registration / mint stays outside
+this public runtime tree. Mainnet mint behavior is outside the current
+transaction-control scaffold.
 
 **Future wrap (not implemented):** a later Polygon evidentiary path can take
 an already-built mint summary (name, network, asset, action, amount or fee,

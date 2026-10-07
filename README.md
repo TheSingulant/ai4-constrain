@@ -110,7 +110,7 @@ ai4-transaction prepare --network mainnet-beta --asset SOL --amount 0.1 --destin
 ai4-transaction status <signature>
 ```
 
-The transaction-control scaffold is present on `main`. The package version remains **0.7.0**. Transaction functionality is unreleased on PyPI as a versioned transaction-feature release. The published PyPI **0.7.0** artifacts do not include `ai4.transaction` or the `ai4-transaction` console script. A checkout of current `main` does. The `--network mainnet-beta` example is a scaffold allowlist value. It is not mainnet enablement.
+The package version remains **0.7.0**. There is currently no PyPI transaction-feature release. Current source on `main` contains the transaction-control scaffold. Published PyPI **0.7.0** artifacts do not include `ai4.transaction` or the `ai4-transaction` console script. The `--network mainnet-beta` example is a scaffold allowlist value. It is not mainnet enablement. Telegram is not deployed. Signing stays in the user wallet. AI4 does not hold private keys.
 
 **DevNet E2E proof (tiny SOL amounts only):** [`examples/transaction/devnet_e2e.py`](examples/transaction/devnet_e2e.py) forces `network=devnet`. A live owner Phantom signature on DevNet is recorded in [`examples/transaction/LIVE_EVIDENCE.md`](examples/transaction/LIVE_EVIDENCE.md) (scaffold and evidence only; version remains **0.7.0**; not a PyPI transaction claim; not Telegram). Desktop owners open the committed HTTPS handoff [`examples/transaction/live_proof/fe30e76a_devnet_handoff.html`](examples/transaction/live_proof/fe30e76a_devnet_handoff.html) in Chrome with Phantom. `phantom.app/ul/browse` is MOBILE_ONLY. AI4 does not hold keys. Runbook: [`docs/transaction-devnet-e2e.md`](docs/transaction-devnet-e2e.md).
 

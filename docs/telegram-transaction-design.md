@@ -1,6 +1,6 @@
 # Telegram handler design (not deployed)
 
-Design only. **No bot code is added or deployed in this PR.** Class 042 hosted
+Design only. **No bot code is in this tree, and none is deployed.** Class 042 hosted
 Telegram is a later host. This repository remains the Class 009 downloadable
 library that the host would import.
 
@@ -82,7 +82,7 @@ software is a custodian or a hosted exchange.
 
 ## What the host must not do
 
-- Deploy this design as live bot code from this PR
+- Deploy this design as live bot code
 - Store user seeds or sign on a server
 - Call a public RPC by hardcoding a URL in this package
 - Treat identity resolution or a `.ai4` name as a payment destination in v1

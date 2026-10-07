@@ -2,8 +2,10 @@
 
 Software for managing a single class of cryptocurrency transfer, with a real
 use of `ai4.constrain` on that consequential action. This note is the v1
-architecture lock. It is a library scaffold on a feature branch. It is not a
-released PyPI version claim, not a Telegram deploy, and not a server wallet.
+architecture lock. The library scaffold is present on main. Package version
+remains 0.7.0. It is not a released PyPI transaction-feature claim, not a
+Telegram deploy, not a server wallet, and not mainnet enablement. Signing
+stays in the user wallet. AI4 does not hold private keys.
 
 Existing constrain-only docs (`DecisionReport`, sessions, identity) do not by
 themselves satisfy a cryptocurrency-transaction goods surface. This module is
@@ -56,7 +58,7 @@ mint is documented below and is not implemented here.
 - CLI `ai4-transaction`
 - Audit-log **stub interface only** (`AuditLogService` / `AuditLogSink`)
 
-**Lives in a future Telegram host (not this PR):**
+**Lives in a future Telegram host, outside this public runtime tree:**
 
 - Bot process, chat transport, feature flag, user/chat allowlist
 - Confirmation screen rendering
@@ -229,8 +231,9 @@ This public tree has no Solana / Phantom / mint transfer pipeline for wrapping
 a live `.ai4` name-registration or mint. As of this work, a private
 singularity tree is also not treated as an in-repo mint wrap source.
 
-**Therefore:** wrap of live `.ai4` name-registration / mint is out of scope
-for this PR. Do not change mainnet mint code in this turn.
+**Therefore:** wrap of live `.ai4` name-registration / mint stays outside
+this public runtime tree. Mainnet mint behavior is outside the current
+transaction-control scaffold.
 
 **Future wrap (not implemented):** a later Polygon evidentiary path can take
 an already-built mint summary (name, network, asset, action, amount or fee,

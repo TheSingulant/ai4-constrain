@@ -2,7 +2,7 @@
 
 All notable public releases of `ai4-constrain` are listed here.
 
-## Unreleased (scaffold, not a PyPI release)
+## Unreleased (merged to main; not a PyPI release)
 
 ### Added
 
@@ -13,11 +13,11 @@ All notable public releases of `ai4-constrain` are listed here.
 - Live Solana DevNet E2E completed with an owner Phantom signature (self-transfer 0.001 SOL, `finalized`); evidence in `examples/transaction/LIVE_EVIDENCE.md`. Scaffold only; version remains 0.7.0; not a PyPI claim; not Telegram.
 - `docs/transaction-control.md`, `docs/transaction-devnet-e2e.md`, and `docs/telegram-transaction-design.md`
 - Optional empty `AI4_SOLANA_RPC_URL=` in `.env.example`
-- Console script `ai4-transaction` (feature branch only; package version remains 0.7.0)
+- Console script `ai4-transaction` declared in source on main. Package version remains 0.7.0. The published PyPI 0.7.0 distribution does not include this script or the `ai4.transaction` package.
 
 ### Not in this change
 
-- No Telegram deploy, no hosted bot, no server wallet, no mint wrap, no version bump
+- No Telegram deploy, no hosted bot, no server wallet, no mint wrap, no version bump, no mainnet enablement
 
 ## 0.7.0 — 2026-09-14
 

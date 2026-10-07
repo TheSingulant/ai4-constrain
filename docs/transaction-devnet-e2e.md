@@ -1,8 +1,9 @@
 # Solana DevNet E2E proof (`ai4.transaction`)
 
-Scaffold / unreleased feature work. Package version remains **0.7.0**. This is
-not a PyPI release of transaction features, not a Telegram bot, and not a
-server wallet.
+The harness is present on `main`. It remains scaffold and evidence only.
+Package version remains **0.7.0**. This is not a PyPI release of transaction
+features, not a Telegram bot, not a server wallet, and not mainnet enablement.
+Signing stays in the user wallet. AI4 does not hold private keys.
 
 The harness proves one vertical slice on **Solana DevNet only**:
 
@@ -27,9 +28,11 @@ Never claim AI4 executed the transfer.
 
 **Live DevNet E2E (owner Phantom signature) is recorded** in
 [`examples/transaction/LIVE_EVIDENCE.md`](../examples/transaction/LIVE_EVIDENCE.md).
-That proof is scaffold only: package version remains **0.7.0**, it is not a
-PyPI transaction-feature claim, and it is not Telegram. Do not merge this PR
-from this note alone.
+That proof is scaffold and evidence only. The package version remains
+**0.7.0**. There is no PyPI transaction-feature release. The harness is
+DevNet-only, limited to tiny SOL amounts, and signed in the owner wallet.
+AI4 does not hold keys. This note is not a mainnet claim and not a Telegram
+deployment.
 
 ## Safety locks
 

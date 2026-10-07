@@ -2,8 +2,10 @@
 
 Software for managing a single class of cryptocurrency transfer, with a real
 use of `ai4.constrain` on that consequential action. This note is the v1
-architecture lock. It is a library scaffold on a feature branch. It is not a
-released PyPI version claim, not a Telegram deploy, and not a server wallet.
+architecture lock. The library scaffold is present on main. Package version
+remains 0.7.0. It is not a released PyPI transaction-feature claim, not a
+Telegram deploy, not a server wallet, and not mainnet enablement. Signing
+stays in the user wallet. AI4 does not hold private keys.
 
 Existing constrain-only docs (`DecisionReport`, sessions, identity) do not by
 themselves satisfy a cryptocurrency-transaction goods surface. This module is

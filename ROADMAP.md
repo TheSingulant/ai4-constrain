@@ -10,13 +10,16 @@
 - Public CI, contributing, and security docs
 - Public-safe validation methodology note
 
+## On main, not in the PyPI 0.7.0 release
+
+- Transaction-control scaffold (`ai4.transaction`) is present on main. It is not a 0.7.0 completeness claim, not a PyPI transaction-feature release, and not a Telegram host. Signing stays in the user wallet. AI4 does not hold private keys. Mainnet is not enabled.
+- Solana DevNet E2E proof harness is scaffold and evidence only (tiny SOL amounts, user-wallet signing).
+
 ## Next (not claimed complete)
 
 - **Dedicated-context lifecycle and expanded authority-control work** (separate phase; no operational topology in this repo)
 - Broader developer examples for hybrid `GoverningIntegration` (still optional / fail-closed)
 - Discoverability hygiene (topics, homepage, downstream dataset mapping) as process work outside the library API
-- Transaction-control scaffold (`ai4.transaction`) is feature-branch work only; not a 0.7.0 completeness claim and not a Telegram host
-- Solana DevNet E2E proof harness is also scaffold-only (tiny SOL amounts, user-wallet signing; not a PyPI transaction release)
 
 ## Explicitly out of scope for this public tree
 

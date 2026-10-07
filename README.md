@@ -103,18 +103,18 @@ ai4-constrain session complete --prompt "Please give a brief, checkable outline 
 
 ## Transaction Control (scaffold)
 
-Class **009** downloadable surface: `ai4.transaction` prepares a v1 **Solana native SOL transfer**, runs the intent through `ai4.constrain` (`evaluate` only by default), and on ALLOW emits an unsigned stub plus a Solana Pay / Phantom browse handoff URI. Signing stays in the user wallet. Status polling uses stdlib JSON-RPC only when `AI4_SOLANA_RPC_URL` or `--rpc-url` is set.
+Class **009** downloadable surface: `ai4.transaction` prepares a v1 **Solana native SOL transfer**, runs the intent through `ai4.constrain` (`evaluate` only by default), and on ALLOW emits an unsigned stub plus a Solana Pay / Phantom browse handoff URI. Signing stays in the user wallet. AI4 does not hold private keys. Status polling uses stdlib JSON-RPC only when `AI4_SOLANA_RPC_URL` or `--rpc-url` is set.
 
 ```bash
 ai4-transaction prepare --network mainnet-beta --asset SOL --amount 0.1 --destination <solana-address>
 ai4-transaction status <signature>
 ```
 
-This is a feature-branch scaffold. Package version remains **0.7.0**. It is not a PyPI release of transaction features.
+The transaction-control scaffold is present on `main`. The package version remains **0.7.0**. Transaction functionality is unreleased on PyPI as a versioned transaction-feature release. The published PyPI **0.7.0** artifacts do not include `ai4.transaction` or the `ai4-transaction` console script. A checkout of current `main` does. The `--network mainnet-beta` example is a scaffold allowlist value. It is not mainnet enablement.
 
-**DevNet E2E proof (tiny SOL amounts only):** [`examples/transaction/devnet_e2e.py`](examples/transaction/devnet_e2e.py) forces `network=devnet`. A live owner Phantom signature on DevNet is recorded in [`examples/transaction/LIVE_EVIDENCE.md`](examples/transaction/LIVE_EVIDENCE.md) (scaffold; version remains **0.7.0**; not a PyPI transaction claim; not Telegram). Desktop owners open the committed HTTPS handoff [`examples/transaction/live_proof/fe30e76a_devnet_handoff.html`](examples/transaction/live_proof/fe30e76a_devnet_handoff.html) in Chrome with Phantom. `phantom.app/ul/browse` is MOBILE_ONLY. AI4 does not hold keys. Runbook: [`docs/transaction-devnet-e2e.md`](docs/transaction-devnet-e2e.md).
+**DevNet E2E proof (tiny SOL amounts only):** [`examples/transaction/devnet_e2e.py`](examples/transaction/devnet_e2e.py) forces `network=devnet`. A live owner Phantom signature on DevNet is recorded in [`examples/transaction/LIVE_EVIDENCE.md`](examples/transaction/LIVE_EVIDENCE.md) (scaffold and evidence only; version remains **0.7.0**; not a PyPI transaction claim; not Telegram). Desktop owners open the committed HTTPS handoff [`examples/transaction/live_proof/fe30e76a_devnet_handoff.html`](examples/transaction/live_proof/fe30e76a_devnet_handoff.html) in Chrome with Phantom. `phantom.app/ul/browse` is MOBILE_ONLY. AI4 does not hold keys. Runbook: [`docs/transaction-devnet-e2e.md`](docs/transaction-devnet-e2e.md).
 
-Class **042** hosted Telegram is **not** in this tree and is not deployed from this PR. Handler design: [`docs/telegram-transaction-design.md`](docs/telegram-transaction-design.md). Architecture, fail-closed rules, and mint-flow findings: [`docs/transaction-control.md`](docs/transaction-control.md).
+Class **042** hosted Telegram is **not** in this tree and is not deployed. Handler design: [`docs/telegram-transaction-design.md`](docs/telegram-transaction-design.md). Architecture, fail-closed rules, and mint-flow findings: [`docs/transaction-control.md`](docs/transaction-control.md).
 
 Constrain-only docs (`DecisionReport`, sessions, identity FileResolver) do **not** already satisfy a cryptocurrency-transaction goods surface. FileResolver is offline `.ai4` fixture resolution. It does not prepare or track mint transactions.
 
@@ -138,7 +138,7 @@ Constrain-only docs (`DecisionReport`, sessions, identity FileResolver) do **not
 
 ## Next
 
-Dedicated-context lifecycle and expanded authority-control work are planned as a separate phase. They are not part of this public 0.7.0 runtime claim.
+Dedicated-context lifecycle and expanded authority-control work remain a separate phase. Broader developer examples for hybrid `GoverningIntegration`, and discoverability hygiene outside the library API, are also still ahead. That work is outside the public 0.7.0 runtime claim. The transaction scaffold already on `main` is unreleased package work, not that next phase.
 
 ## Prior releases (short)
 

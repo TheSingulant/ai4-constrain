@@ -66,7 +66,7 @@ print(report.decision, report.final_output)
 
 Default provider is the offline mock. No API key is required for the quickstart or pytest.
 
-Optional hybrid surface (default OFF; requires a caller-built `GoverningIntegration` with distinct examiner pin and allowlisted origins — see tests under `tests/test_hybrid_*`):
+Optional hybrid surface (default OFF; requires a caller-built `GoverningIntegration` with distinct examiner pin and allowlisted origins; see tests under `tests/test_hybrid_*`):
 
 ```python
 from ai4.constrain import GoverningIntegration, GOVERNING_INTEGRATION_VERSION
@@ -110,11 +110,11 @@ ai4-transaction prepare --network mainnet-beta --asset SOL --amount 0.1 --destin
 ai4-transaction status <signature>
 ```
 
-The package version remains **0.7.0**. There is currently no PyPI transaction-feature release. Current source on `main` contains the transaction-control scaffold. Published PyPI **0.7.0** artifacts do not include `ai4.transaction` or the `ai4-transaction` console script. The `--network mainnet-beta` example is a scaffold allowlist value. It is not mainnet enablement. Telegram is not deployed. Signing stays in the user wallet. AI4 does not hold private keys.
+The package version remains **0.7.0**. There is currently no PyPI transaction-feature release. Current source on `main` contains the transaction-control scaffold. Published PyPI **0.7.0** artifacts do not include `ai4.transaction` or the `ai4-transaction` console script. The `--network mainnet-beta` example is a scaffold allowlist value. It is not mainnet enablement. The AI4 community bot is deployed as a separate community interface. It is not part of the ai4-constrain package or constrained-authority runtime. Signing stays in the user wallet. AI4 does not hold private keys.
 
 **DevNet E2E proof (tiny SOL amounts only):** [`examples/transaction/devnet_e2e.py`](examples/transaction/devnet_e2e.py) forces `network=devnet`. A live owner Phantom signature on DevNet is recorded in [`examples/transaction/LIVE_EVIDENCE.md`](examples/transaction/LIVE_EVIDENCE.md) (scaffold and evidence only; version remains **0.7.0**; not a PyPI transaction claim; not Telegram). Desktop owners open the committed HTTPS handoff [`examples/transaction/live_proof/fe30e76a_devnet_handoff.html`](examples/transaction/live_proof/fe30e76a_devnet_handoff.html) in Chrome with Phantom. `phantom.app/ul/browse` is MOBILE_ONLY. AI4 does not hold keys. Runbook: [`docs/transaction-devnet-e2e.md`](docs/transaction-devnet-e2e.md).
 
-Class **042** hosted Telegram is **not** in this tree and is not deployed. Handler design: [`docs/telegram-transaction-design.md`](docs/telegram-transaction-design.md). Architecture, fail-closed rules, and mint-flow findings: [`docs/transaction-control.md`](docs/transaction-control.md).
+Class **042** hosted Telegram is **not** in this tree. The community bot runs outside this repository, and its deployment does not mean `ai4-constrain` executes transactions or gains signing authority. Handler design: [`docs/telegram-transaction-design.md`](docs/telegram-transaction-design.md). Architecture, fail-closed rules, and mint-flow findings: [`docs/transaction-control.md`](docs/transaction-control.md).
 
 Constrain-only docs (`DecisionReport`, sessions, identity FileResolver) do **not** already satisfy a cryptocurrency-transaction goods surface. FileResolver is offline `.ai4` fixture resolution. It does not prepare or track mint transactions.
 
@@ -130,7 +130,7 @@ Constrain-only docs (`DecisionReport`, sessions, identity FileResolver) do **not
 | [`docs/identity-resolution.md`](docs/identity-resolution.md) | Offline `.ai4` discovery |
 | [`docs/transaction-control.md`](docs/transaction-control.md) | Transaction control scaffold |
 | [`docs/transaction-devnet-e2e.md`](docs/transaction-devnet-e2e.md) | Solana DevNet E2E proof harness |
-| [`docs/telegram-transaction-design.md`](docs/telegram-transaction-design.md) | Future Telegram host (design only) |
+| [`docs/telegram-transaction-design.md`](docs/telegram-transaction-design.md) | Telegram host handler design (host not in this tree) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Version history |
 | [`ROADMAP.md`](ROADMAP.md) | Done vs next |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Dev workflow |
@@ -142,12 +142,12 @@ Dedicated-context lifecycle and expanded authority-control work remain a separat
 
 ## Prior releases (short)
 
-- **0.6.0** — offline `.ai4` `FileResolver` discovery adapter
-- **0.5.0** — `ai4.identity` provenance kernel
-- **0.4.0** — evaluator policy wall
-- **0.3.0** — proposal-provider policy wall
-- **0.2.0** — `ConstrainedSession`
-- **0.1.x** — frozen condition-D product wrapper
+- **0.6.0**: offline `.ai4` `FileResolver` discovery adapter
+- **0.5.0**: `ai4.identity` provenance kernel
+- **0.4.0**: evaluator policy wall
+- **0.3.0**: proposal-provider policy wall
+- **0.2.0**: `ConstrainedSession`
+- **0.1.x**: frozen condition-D product wrapper
 
 Identity is not trust. Resolution is not verification. Naming is not policy authority.
 

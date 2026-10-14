@@ -98,7 +98,7 @@ Stdout prints:
 | Committed `examples/transaction/live_proof/fe30e76a_devnet_handoff.html` over **HTTPS** | Chrome + Phantom **extension**. Owner click-path: GitHub Pages `https://thesingulant.github.io/ai4-constrain/live-proof/fe30e76a/` (`text/html`, bytes match the committed file). GitHack is the same HTML MIME fallback. Click **Approve in Phantom**. Uses `window.phantom.solana`, `SystemProgram.transfer` with **exact** dest + lamports, `signAndSendTransaction`. jsDelivr hosts the same bytes but currently serves `text/plain` + `nosniff`. | **Desktop owner path** |
 | Generated HTML on `http://127.0.0.1` | Same injected-provider page, local only. | Optional offline/dev fallback |
 
-Phantom injects the provider on `https://`, `localhost`, and `127.0.0.1` — **not** `file://`.
+Phantom injects the provider on `https://`, `localhost`, and `127.0.0.1`, but **not** `file://`.
 
 **Owner desktop path:** open the committed HTML over HTTPS (HTML MIME), for example:
 
@@ -113,7 +113,7 @@ Do **not** run `python3 -m http.server` as the owner path. Local `127.0.0.1` ser
 
 ### 2. Sign in your wallet (owner)
 
-**Desktop (Chrome extension) — owner path:**
+**Desktop (Chrome extension), owner path:**
 
 1. Open the **HTTPS** live-proof HTML in Chrome (GitHub Pages or rawcdn.githack.com; HTML MIME).
 2. Confirm Phantom's cluster is **Solana Devnet**.

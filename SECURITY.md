@@ -2,7 +2,7 @@
 
 ## Reporting
 
-Report suspected vulnerabilities in this public library by emailing the repository owner via the GitHub profile contact for **TheSingulant**, or by opening a **private** security advisory on GitHub if enabled.
+Report suspected vulnerabilities in this public library privately by email to support@thesingulant.ai. Please allow reasonable time to investigate and fix an issue before any public disclosure (responsible, coordinated disclosure).
 
 Do not file public issues that include credentials, tokens, private keys, or production host details.
 

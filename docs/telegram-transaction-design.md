@@ -1,7 +1,10 @@
-# Telegram handler design (not deployed)
+# Telegram handler design (host not in this tree)
 
-Design only. **No bot code is in this tree, and none is deployed.** Class 042 hosted
-Telegram is a later host. This repository remains the Class 009 downloadable
+Design only. **No bot code is in this tree.** The AI4 community bot is deployed
+as a separate community interface. It is not part of the ai4-constrain package
+or constrained-authority runtime, and its deployment does not give this library
+transaction execution or signing authority. Class 042 hosted Telegram lives
+outside this repository. This repository remains the Class 009 downloadable
 library that the host would import.
 
 Do not put tokens, chat ids, or host credentials in this tree.

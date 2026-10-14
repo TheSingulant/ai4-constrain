@@ -46,12 +46,12 @@ Stable JSON document (`schema_version` `0.1.0`) with:
 - `revision_trace` captured from the live loop (not replayed)
 - `final_output`
 - telemetry and evaluator/runtime versions, including `evidence_class`
-- `proposal`: `{provider_id, model, resolved_as}` — auditable proposal-backend
+- `proposal`: `{provider_id, model, resolved_as}`: auditable proposal-backend
   identity, **not** governing policy. `resolved_as` is `config`,
   `explicit_argument`, `custom_object`, `evaluate_only`, or
   `legacy_telemetry` (schema 0.1.0 reports that only recorded provider/model
   on telemetry). Old reports without this block remain loadable.
-- `evaluator`: `{evaluator_id, evaluator_version, resolved_as}` — auditable
+- `evaluator`: `{evaluator_id, evaluator_version, resolved_as}`: auditable
   evaluator-implementation provenance, **not** governing policy.
   `resolved_as` is `config`, `explicit_argument`, `custom_object`, or
   `legacy_versions`. Old reports without this block remain loadable from
@@ -91,12 +91,12 @@ material), and actual password assignments in textual fields.
 Address spans follow an explicit street / unit / city-state-ZIP rule.
 Quotes, parentheses, abbreviation periods, parenthesized units, and
 newline/CRLF continuation stay inside the span. A completed street that
-is not followed by a unit or city-state-ZIP is a sentence boundary —
+is not followed by a unit or city-state-ZIP is a sentence boundary;
 capitalized or ALL-CAPS prose after that period is not consumed.
 
 Password assignment is parsed from clause context (`password is:`,
 `password is :`, `password:`, `password is <value>`). A single assigned
-value — including letters-only credentials such as `secret` — is
+value, including letters-only credentials such as `secret`, is
 removed. A multi-word complement in the same clause is predicate prose
 (“a password is required to continue”, “the password is case sensitive”,
 “your password is safe”).
@@ -240,7 +240,7 @@ custom snapshots missing that field fail closed (no silent migrate).
 Internal constructors live in `ai4.constrain.ext` and are not a substitute
 for `run` / `evaluate`.
 
-- `session_store()` — in-memory by default; a directory path selects JSON
+- `session_store()`: in-memory by default; a directory path selects JSON
   snapshots used by `ConstrainedSession`. Constructor/runtime config is
   authority on restore; persisted `redact` / `include_history` are
   validation metadata, not governing settings.

@@ -19,7 +19,7 @@ All notable public releases of `ai4-constrain` are listed here.
 
 - No Telegram deploy, no hosted bot, no server wallet, no mint wrap, no version bump, no mainnet enablement
 
-## 0.7.0 — 2026-09-14
+## 0.7.0 (2026-09-14)
 
 ### Added
 
